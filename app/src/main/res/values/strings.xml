@@ -94,4 +94,16 @@
     <string name="memory_connect_restored">Bestehendes Gedächtnis wiederhergestellt.</string>
     <string name="memory_sync_done">Synchronisiert.</string>
     <string name="memory_error">Fehler: %1$s</string>
+
+    <!-- Einstellungen: Sprachausgabe (Dialogmodus) -->
+    <string name="title_voice">Sprachausgabe (Dialogmodus)</string>
+    <string name="voice_intro">Stimme, Tempo und Tonhöhe fürs Vorlesen im Dialogmodus. Welche Stimmen zur Wahl stehen, hängt von der auf dem Gerät installierten Sprachausgabe ab (meist mehrere pro Sprache).</string>
+    <string name="voice_hint">Stimme</string>
+    <string name="voice_default">Systemstandard</string>
+    <string name="voice_item_label">Stimme %1$d — %2$s%3$s</string>
+    <string name="voice_network_suffix">" · braucht Internet"</string>
+    <string name="voice_rate_label">Tempo: %1$.2f×</string>
+    <string name="voice_pitch_label">Tonhöhe: %1$.2f×</string>
+    <string name="voice_test">Probehören</string>
+    <string name="voice_test_sentence">So klinge ich mit den aktuellen Einstellungen. Passen Tempo und Tonhöhe?</string>
 </resources>

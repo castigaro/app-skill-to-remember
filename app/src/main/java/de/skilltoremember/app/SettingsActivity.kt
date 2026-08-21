@@ -3,6 +3,7 @@ package de.skilltoremember.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
@@ -31,6 +32,12 @@ class SettingsActivity : AppCompatActivity() {
     /** Vom Nutzer eingeblendete Zweit-Sektion (Zustand B beim Provider), nicht persistent. */
     private var showSecondProvider = false
 
+    /** Eigene TTS-Instanz nur für Stimmenliste und Probehören. */
+    private var voicePreviewTts: TextToSpeech? = null
+
+    /** Technische Stimmen-Namen, parallel zur Dropdown-Liste (Index 0 = Systemstandard). */
+    private val voiceNames = mutableListOf<String>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
@@ -40,6 +47,14 @@ class SettingsActivity : AppCompatActivity() {
 
         setUpProviderSection()
         setUpMemorySection()
+        setUpVoiceSection()
+    }
+
+    override fun onDestroy() {
+        voicePreviewTts?.stop()
+        voicePreviewTts?.shutdown()
+        voicePreviewTts = null
+        super.onDestroy()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -296,6 +311,69 @@ class SettingsActivity : AppCompatActivity() {
                 },
             )
         }
+    }
+
+    // ======================================================================
+    // Sprachausgabe (Dialogmodus): Stimme, Tempo, Tonhöhe
+    // ======================================================================
+
+    private fun setUpVoiceSection() {
+        binding.labelVoiceRate.text = getString(R.string.voice_rate_label, VoiceSettings.getRate(this))
+        binding.labelVoicePitch.text = getString(R.string.voice_pitch_label, VoiceSettings.getPitch(this))
+        binding.sliderVoiceRate.value = snapToStep(VoiceSettings.getRate(this))
+        binding.sliderVoicePitch.value = snapToStep(VoiceSettings.getPitch(this))
+
+        binding.sliderVoiceRate.addOnChangeListener { _, value, _ ->
+            VoiceSettings.setRate(this, value)
+            binding.labelVoiceRate.text = getString(R.string.voice_rate_label, value)
+        }
+        binding.sliderVoicePitch.addOnChangeListener { _, value, _ ->
+            VoiceSettings.setPitch(this, value)
+            binding.labelVoicePitch.text = getString(R.string.voice_pitch_label, value)
+        }
+        binding.buttonVoiceTest.setOnClickListener { playVoiceSample() }
+
+        voicePreviewTts = TextToSpeech(this) { status ->
+            runOnUiThread {
+                if (status == TextToSpeech.SUCCESS && !isDestroyed) populateVoiceDropdown()
+            }
+        }
+    }
+
+    /** Slider akzeptiert nur Vielfache der Schrittweite — gespeicherte Werte darauf einrasten. */
+    private fun snapToStep(value: Float): Float {
+        val steps = Math.round((value - 0.5f) / 0.05f).coerceIn(0, 30)
+        return (50 + steps * 5) / 100f
+    }
+
+    private fun populateVoiceDropdown() {
+        val tts = voicePreviewTts ?: return
+        val language = Locale.getDefault().language
+        val voices = runCatching { tts.voices }.getOrNull().orEmpty()
+            .filter { it.locale.language == language }
+            .sortedBy { it.name }
+
+        val labels = mutableListOf(getString(R.string.voice_default))
+        voiceNames.clear()
+        voiceNames.add("")
+        voices.forEachIndexed { i, voice ->
+            val suffix = if (voice.isNetworkConnectionRequired) getString(R.string.voice_network_suffix) else ""
+            labels.add(getString(R.string.voice_item_label, i + 1, voice.locale.toLanguageTag(), suffix))
+            voiceNames.add(voice.name)
+        }
+
+        binding.inputVoice.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, labels))
+        val savedIndex = voiceNames.indexOf(VoiceSettings.getVoiceName(this)).takeIf { it >= 0 } ?: 0
+        binding.inputVoice.setText(labels[savedIndex], false)
+        binding.inputVoice.setOnItemClickListener { _, _, position, _ ->
+            VoiceSettings.setVoiceName(this, voiceNames.getOrElse(position) { "" })
+        }
+    }
+
+    private fun playVoiceSample() {
+        val tts = voicePreviewTts ?: return
+        VoiceSettings.apply(this, tts)
+        tts.speak(getString(R.string.voice_test_sentence), TextToSpeech.QUEUE_FLUSH, null, "voice-preview")
     }
 
     companion object {
