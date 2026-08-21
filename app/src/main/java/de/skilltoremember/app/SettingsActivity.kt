@@ -199,6 +199,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.inputMemoryBranch.setText(MemorySettings.getBranch(this))
         binding.inputMemoryToken.setText(MemorySettings.getToken(this))
 
+        binding.memoryTokenLink.setOnClickListener { openUrl(URL_CREATE_TOKEN) }
         binding.buttonMemoryConnect.setOnClickListener { connectMemory() }
         binding.buttonMemorySync.setOnClickListener { syncMemoryNow() }
 
@@ -300,6 +301,9 @@ class SettingsActivity : AppCompatActivity() {
     companion object {
         private const val URL_REGISTER_ANTHROPIC = "https://console.anthropic.com/settings/keys"
         private const val URL_REGISTER_OPENAI = "https://platform.openai.com/api-keys"
+
+        /** Direkt die "Fine-grained token"-Erstellseite — Tokens lassen sich nur im Browser anlegen, nicht in der GitHub-App. */
+        private const val URL_CREATE_TOKEN = "https://github.com/settings/personal-access-tokens/new"
     }
 }
 

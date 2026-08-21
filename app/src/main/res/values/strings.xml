@@ -4,6 +4,7 @@
 
     <!-- Chat-Liste -->
     <string name="empty_state">Noch keine Chats.\n\nTippe auf +, um mit dem Assistenten zu schreiben.</string>
+    <string name="empty_state_unconfigured">Noch keine Chats.\n\nBitte richte zuerst in den Einstellungen deinen API-Key und das Gedächtnis ein.\n\nDanach: Tippe auf +, um mit dem Assistenten zu schreiben.</string>
     <string name="untitled_chat">Neuer Chat</string>
     <string name="new_chat">Neuer Chat</string>
     <string name="delete_chat">Chat löschen</string>
@@ -77,6 +78,8 @@
     <string name="memory_repo_hint">Repository-Name</string>
     <string name="memory_branch_hint">Branch (Standard: main)</string>
     <string name="memory_token_hint">Personal Access Token (Contents: Read and write)</string>
+    <string name="memory_token_howto">So bekommst du den Personal Access Token (einmalig, geht nur über die GitHub-Webseite — die GitHub-App kann das nicht):\n\n1. Auf GitHub ein neues, leeres, privates Repository anlegen (ohne README).\n2. github.com → Profilbild → Settings → Developer settings → Personal access tokens → Fine-grained tokens → „Generate new token“.\n3. Expiration wählen (nach Ablauf einfach neuen Token hier eintragen).\n4. Repository access: „Only select repositories“ → nur das Gedächtnis-Repo auswählen.\n5. Permissions → Repository permissions → Contents: „Read and write“ — sonst nichts.\n6. Token erzeugen, sofort kopieren (GitHub zeigt ihn nur dieses eine Mal) und unten einfügen.\n\nDer Token kann damit ausschließlich dieses eine Repo lesen und schreiben, sonst nichts in deinem Konto. Er bleibt nur lokal auf diesem Gerät.</string>
+    <string name="memory_token_link">Token auf GitHub erstellen →</string>
     <string name="memory_fields_required">Benutzername, Repository und Token dürfen nicht leer sein.</string>
     <string name="memory_connect">Verbinden</string>
     <string name="memory_sync_now">Jetzt synchronisieren</string>

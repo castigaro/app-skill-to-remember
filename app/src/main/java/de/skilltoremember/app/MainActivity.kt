@@ -44,6 +44,10 @@ class MainActivity : AppCompatActivity() {
         val chats = ChatStore.getAll(this)
         adapter.submit(chats)
         binding.emptyState.visibility = if (chats.isEmpty()) View.VISIBLE else View.GONE
+        // Ohne API-Key würde "Tippe auf +" ins Leere laufen — erst zur Einrichtung führen.
+        binding.emptyState.setText(
+            if (ProviderSettings.isConfigured(this)) R.string.empty_state else R.string.empty_state_unconfigured
+        )
     }
 
     private fun startNewChat() {
