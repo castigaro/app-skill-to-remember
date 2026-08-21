@@ -11,6 +11,9 @@ object ModelPricing {
     val SUGGESTED_ANTHROPIC = listOf("claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5")
     val SUGGESTED_OPENAI = listOf("gpt-4o-mini", "gpt-4o")
 
+    /** Websuche: 10 USD pro 1.000 Suchen ⇒ 10.000 Mikro-Dollar je Suche, zusätzlich zu den Token. */
+    const val WEB_SEARCH_COST_MICROS_PER_SEARCH = 10_000L
+
     /** USD pro Million Token (input, output). */
     private data class Price(val inputUsd: Double, val outputUsd: Double)
 

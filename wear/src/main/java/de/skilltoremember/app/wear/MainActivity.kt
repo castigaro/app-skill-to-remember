@@ -170,6 +170,7 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
             openaiModel = map.getString("openaiModel") ?: "",
             openaiEnabled = map.getBoolean("openaiEnabled", true),
         )
+        ProviderSettings.setWebSearchEnabled(this, map.getBoolean("webSearch", false))
         MemorySettings.save(
             this,
             owner = map.getString("memOwner") ?: "",
@@ -275,7 +276,7 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
             return
         }
         VoiceSettings.apply(this, engine)
-        val cleaned = text.replace(Regex("[*_#`>|]+"), " ").replace(Regex("\\s+"), " ").trim()
+        val cleaned = VoiceSettings.textForSpeech(text)
         if (cleaned.isBlank()) return
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}

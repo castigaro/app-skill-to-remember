@@ -12,6 +12,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import de.skilltoremember.app.api.ModelPricing
@@ -102,7 +103,30 @@ class SettingsActivity : AppCompatActivity() {
         binding.buttonDeleteOpenai.setOnClickListener { deleteProviderKey(ProviderSettings.PROVIDER_OPENAI) }
         binding.buttonSaveSettings.setOnClickListener { saveProviderSettings() }
 
+        // Websuche: greift sofort (kein Speichern-Knopf nötig); Anschalten erst
+        // nach bestätigtem Kostenhinweis.
+        binding.switchWebSearch.isChecked = ProviderSettings.isWebSearchEnabled(this)
+        binding.switchWebSearch.setOnCheckedChangeListener { _, checked ->
+            if (checked && !ProviderSettings.isWebSearchEnabled(this)) {
+                confirmWebSearch()
+            } else if (!checked) {
+                ProviderSettings.setWebSearchEnabled(this, false)
+            }
+        }
+
         refreshProviderUi()
+    }
+
+    private fun confirmWebSearch() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.web_search_confirm_title)
+            .setMessage(R.string.web_search_confirm_message)
+            .setPositiveButton(R.string.web_search_confirm_on) { _, _ ->
+                ProviderSettings.setWebSearchEnabled(this, true)
+            }
+            .setNegativeButton(R.string.cancel) { _, _ -> binding.switchWebSearch.isChecked = false }
+            .setOnCancelListener { binding.switchWebSearch.isChecked = false }
+            .show()
     }
 
     private fun refreshProviderUi() {
@@ -335,6 +359,7 @@ class SettingsActivity : AppCompatActivity() {
             dataMap.putString("openaiKey", ProviderSettings.getKey(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
             dataMap.putString("openaiModel", ProviderSettings.getModel(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
             dataMap.putBoolean("openaiEnabled", ProviderSettings.isEnabled(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
+            dataMap.putBoolean("webSearch", ProviderSettings.isWebSearchEnabled(this@SettingsActivity))
             dataMap.putString("memOwner", MemorySettings.getOwner(this@SettingsActivity))
             dataMap.putString("memRepo", MemorySettings.getRepo(this@SettingsActivity))
             dataMap.putString("memBranch", MemorySettings.getBranch(this@SettingsActivity))

@@ -2,6 +2,7 @@ package de.skilltoremember.app
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
+import de.skilltoremember.app.api.ChatApi
 
 /**
  * Stimme, Tempo und Tonhöhe für die Sprachausgabe im Dialogmodus. Die
@@ -32,6 +33,17 @@ object VoiceSettings {
     fun setPitch(context: Context, pitch: Float) {
         prefs(context).edit().putFloat("pitch", pitch).apply()
     }
+
+    /**
+     * Bereitet Antworttext fürs Vorlesen auf: Der angehängte Quellen-Block der
+     * Websuche wird abgeschnitten (URLs vorlesen hilft niemandem — auf dem
+     * Bildschirm bleiben sie stehen), Markdown-Reste werden entfernt.
+     */
+    fun textForSpeech(text: String): String =
+        text.substringBefore("\n\n" + ChatApi.SOURCES_HEADING)
+            .replace(Regex("[*_#`>|]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
 
     /** Wendet die gespeicherten Werte auf eine [TextToSpeech]-Instanz an. */
     fun apply(context: Context, tts: TextToSpeech) {

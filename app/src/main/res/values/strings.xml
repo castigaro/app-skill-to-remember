@@ -75,6 +75,13 @@
     <string name="provider_settings_save">Speichern</string>
     <string name="provider_settings_saved">Einstellungen gespeichert</string>
 
+    <!-- Einstellungen: Websuche (nur Anthropic) -->
+    <string name="web_search_enabled">Websuche erlauben</string>
+    <string name="web_search_hint">Lässt die KI bei Bedarf aktuelle Informationen im Internet suchen (nur mit Anthropic-Modellen). Jede Suche kostet extra — Details beim Anschalten.</string>
+    <string name="web_search_confirm_title">Websuche aktivieren?</string>
+    <string name="web_search_confirm_message">Jede Websuche kostet zusätzlich zu den normalen Token-Kosten etwa 0,01 $ (10 $ pro 1.000 Suchen). Eine Antwort kann bis zu 5 Suchen auslösen, und die gefundenen Inhalte zählen als Eingabe-Token. Die Kosten fließen mit in den Kostenzähler ein.\n\nFür die Uhr gilt die Einstellung nach dem nächsten „Einstellungen an die Uhr senden“.</string>
+    <string name="web_search_confirm_on">Aktivieren</string>
+
     <!-- Einstellungen: Gedächtnis -->
     <string name="title_memory">Gedächtnis</string>
     <string name="memory_intro">Der eingebaute Skill „humanoid-behavior“ merkt sich über Chats hinweg, was zählt — gespeichert in einem privaten GitHub-Repo, das nur dir gehört. Leeres privates Repo anlegen und hier eintragen.</string>

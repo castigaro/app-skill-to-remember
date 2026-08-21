@@ -82,6 +82,15 @@ object ProviderSettings {
     fun otherProvider(provider: String): String =
         if (provider == PROVIDER_ANTHROPIC) PROVIDER_OPENAI else PROVIDER_ANTHROPIC
 
+    // ---- Websuche (serverseitiges Anthropic-Tool, kostet extra — Default aus) ----
+
+    fun isWebSearchEnabled(context: Context): Boolean =
+        prefs(context).getBoolean("webSearchEnabled", false)
+
+    fun setWebSearchEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("webSearchEnabled", enabled).apply()
+    }
+
     // ---- Kostenzähler (Mikro-Dollar, geschätzt) ----
 
     fun getCostMicros(context: Context, provider: String): Long =

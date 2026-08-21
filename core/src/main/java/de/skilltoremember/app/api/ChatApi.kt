@@ -50,6 +50,14 @@ object ChatApi {
     private const val MAX_TOOL_ROUNDS = 6
     private const val MEMORY_PULL_INTERVAL_SECONDS = 5 * 60L
 
+    // Basis-Variante des serverseitigen Suche-Tools: läuft auf allen aktuellen
+    // Claude-Modellen (auch Haiku) — die neueren Varianten nicht.
+    private const val WEB_SEARCH_TOOL_TYPE = "web_search_20250305"
+    private const val WEB_SEARCH_MAX_USES = 5
+
+    /** Überschrift des angehängten Quellen-Blocks — die Sprachausgabe schneidet ab hier ab. */
+    const val SOURCES_HEADING = "Quellen:"
+
     private val JSON = "application/json".toMediaType()
 
     private val client = OkHttpClient.Builder()
@@ -299,8 +307,20 @@ object ChatApi {
 
     // ---- Anthropic ----
 
-    private fun anthropicTools(skills: List<Skill>, memoryStore: MemoryStore?): JSONArray {
+    internal fun anthropicTools(skills: List<Skill>, memoryStore: MemoryStore?, webSearch: Boolean): JSONArray {
         val tools = JSONArray()
+        if (webSearch) {
+            // Serverseitig: Anthropic führt die Suche selbst aus, die App muss nichts tun.
+            tools.put(JSONObject().apply {
+                put("type", WEB_SEARCH_TOOL_TYPE)
+                put("name", "web_search")
+                put("max_uses", WEB_SEARCH_MAX_USES)
+                put("user_location", JSONObject().apply {
+                    put("type", "approximate")
+                    put("timezone", java.util.TimeZone.getDefault().id)
+                })
+            })
+        }
         if (skills.isNotEmpty()) {
             tools.put(JSONObject().apply {
                 put("name", TOOL_LOAD_SKILL)
@@ -337,7 +357,7 @@ object ChatApi {
                 put("content", msg.text)
             })
         }
-        val tools = anthropicTools(skills, memoryStore)
+        val tools = anthropicTools(skills, memoryStore, ProviderSettings.isWebSearchEnabled(context))
 
         for (round in 0..MAX_TOOL_ROUNDS) {
             val body = JSONObject().apply {
@@ -367,9 +387,26 @@ object ChatApi {
                         inputTokens = usage.optLong("input_tokens", 0L),
                         outputTokens = usage.optLong("output_tokens", 0L),
                     )
+                    val searches = usage.optJSONObject("server_tool_use")?.optLong("web_search_requests", 0L) ?: 0L
+                    if (searches > 0) {
+                        ProviderSettings.addCostMicros(
+                            context, ProviderSettings.PROVIDER_ANTHROPIC,
+                            searches * ModelPricing.WEB_SEARCH_COST_MICROS_PER_SEARCH,
+                        )
+                    }
                 }
 
                 val content = json.getJSONArray("content")
+
+                // Lange Such-Runden pausiert die API — die angefangene Antwort
+                // unverändert zurückschicken, dann macht sie an der Stelle weiter.
+                if (json.optString("stop_reason") == "pause_turn") {
+                    messages.put(JSONObject().apply {
+                        put("role", "assistant")
+                        put("content", content)
+                    })
+                    return@use
+                }
 
                 if (json.optString("stop_reason") == "tool_use") {
                     messages.put(JSONObject().apply {
@@ -396,16 +433,44 @@ object ChatApi {
                     return@use
                 }
 
-                for (i in 0 until content.length()) {
-                    val block = content.getJSONObject(i)
-                    if (block.optString("type") == "text") {
-                        return block.getString("text").trim()
-                    }
-                }
+                val text = extractAnthropicText(content)
+                if (text.isNotBlank()) return text
                 throw ApiException("Leere Antwort vom Modell.")
             }
         }
         throw ApiException("Zu viele Tool-Aufrufe in Folge — abgebrochen.")
+    }
+
+    /**
+     * Fügt alle Text-Blöcke der Antwort zusammen — mit aktiver Websuche liefert
+     * die API den Text in mehreren Blöcken mit Quellen-Zitaten; Such-Blöcke
+     * (server_tool_use, web_search_tool_result) werden übersprungen. Zitierte
+     * Quellen werden dedupliziert als "[SOURCES_HEADING]"-Block angehängt
+     * (Pflicht bei der Anzeige von Suchergebnissen).
+     */
+    internal fun extractAnthropicText(content: JSONArray): String {
+        val text = StringBuilder()
+        val sources = LinkedHashMap<String, String>() // URL -> Titel, in Zitier-Reihenfolge
+        for (i in 0 until content.length()) {
+            val block = content.getJSONObject(i)
+            if (block.optString("type") != "text") continue
+            text.append(block.optString("text"))
+            val citations = block.optJSONArray("citations") ?: continue
+            for (c in 0 until citations.length()) {
+                val citation = citations.getJSONObject(c)
+                val url = citation.optString("url")
+                if (url.isNotBlank() && !sources.containsKey(url)) {
+                    sources[url] = citation.optString("title")
+                }
+            }
+        }
+        if (sources.isNotEmpty()) {
+            text.append("\n\n").append(SOURCES_HEADING)
+            sources.forEach { (url, title) ->
+                text.append("\n• ").append(title.ifBlank { url }).append(" — ").append(url)
+            }
+        }
+        return text.toString().trim()
     }
 
     // ---- OpenAI ----

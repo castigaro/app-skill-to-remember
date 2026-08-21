@@ -214,8 +214,8 @@ class ChatActivity : AppCompatActivity() {
     private fun speak(text: String) {
         val engine = tts ?: return
         VoiceSettings.apply(this, engine)
-        // Fürs Vorlesen reicht purer Text — Markdown-Reste stören nur.
-        val cleaned = text.replace(Regex("[*_#`>|]+"), " ").replace(Regex("\\s+"), " ").trim()
+        // Fürs Vorlesen reicht purer Text — Markdown-Reste und Quellen-Block stören nur.
+        val cleaned = VoiceSettings.textForSpeech(text)
         if (cleaned.isBlank()) return
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
