@@ -56,6 +56,9 @@ dependencies {
     implementation(project(":core"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-ktx:1.9.2")
+    // androidx.wear zieht transitiv ein altes Fragment (<1.3.0) herein, was der
+    // Release-Lint wegen registerForActivityResult zu Recht anmeckert — explizit anheben.
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.wear:wear:1.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
