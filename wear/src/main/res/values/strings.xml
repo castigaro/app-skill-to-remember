@@ -11,4 +11,6 @@
     <string name="wear_speech_unavailable">Spracheingabe ist auf dieser Uhr nicht verfügbar.</string>
     <string name="wear_chat_title">Am Handgelenk</string>
     <string name="wear_update_available">Version %1$s verfügbar — Uhr-App per adb aktualisieren.</string>
+    <string name="wear_memory_ready">Gedächtnis verbunden.</string>
+    <string name="wear_memory_failed">Gedächtnis nicht geladen: %1$s</string>
 </resources>

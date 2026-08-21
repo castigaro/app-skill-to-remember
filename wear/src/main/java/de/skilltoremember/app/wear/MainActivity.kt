@@ -94,6 +94,9 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
 
         updateStatus()
         loadStoredConfig()
+        // Falls ein früherer Wiederherstellungs-Versuch scheiterte (Netz weg,
+        // App zwischendurch beendet): bei jedem Start erneut probieren.
+        restoreMemoryIfNeeded()
         checkForUpdate()
     }
 
@@ -179,22 +182,33 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
         restoreMemoryIfNeeded()
     }
 
-    /** Holt ein bestehendes Gedächtnis vom Repo, falls lokal noch keins liegt. */
+    /** Holt ein bestehendes Gedächtnis vom Repo, falls lokal noch keins liegt — mit sichtbarem Ergebnis. */
     private fun restoreMemoryIfNeeded() {
         if (!MemorySettings.isConfigured(this) || MemorySettings.store(this).exists()) return
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 runCatching {
                     val store = MemorySettings.store(this@MainActivity)
                     val config = MemorySettings.config(this@MainActivity)
                     val remoteMeta = GitHubMemorySync.readRemoteMeta(config)
-                    if (remoteMeta != null) {
-                        store.saveMeta(remoteMeta)
-                        GitHubMemorySync.pull(store, config)
-                        MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
-                    }
+                        ?: throw IllegalStateException("Repo leer oder nicht erreichbar")
+                    store.saveMeta(remoteMeta)
+                    GitHubMemorySync.pull(store, config)
+                    MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
                 }
             }
+            result.fold(
+                onSuccess = {
+                    Toast.makeText(this@MainActivity, R.string.wear_memory_ready, Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { e ->
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.wear_memory_failed, e.message ?: "?"),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
+            )
         }
     }
 
