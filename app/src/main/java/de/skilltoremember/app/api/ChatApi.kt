@@ -61,14 +61,18 @@ object ChatApi {
         knapp und in der Sprache des Nutzers (im Zweifel Deutsch).
     """.trimIndent()
 
-    /** Erzeugt die nächste Assistenten-Antwort für den Chat-Verlauf. */
-    suspend fun reply(context: Context, chat: Chat): String = withContext(Dispatchers.IO) {
+    /**
+     * Erzeugt die nächste Assistenten-Antwort für den Chat-Verlauf.
+     * [concise] steht für den Sprachdialog-Modus: Die Antwort wird vorgelesen,
+     * das Modell soll sich deshalb kurz fassen.
+     */
+    suspend fun reply(context: Context, chat: Chat, concise: Boolean = false): String = withContext(Dispatchers.IO) {
         val config = ProviderSettings.activeConfig(context)
             ?: throw ApiException("Kein aktiver API-Key — in den Einstellungen hinterlegen oder aktivieren.")
         val skills = SkillStore.getEnabled(context)
         val memoryStore = memoryStoreIfActive(context, skills)
         val digest = memoryStore?.let { runCatching { MemoryEngine.boot(it).digest }.getOrNull() }
-        val systemPrompt = buildSystemPrompt(skills, memoryStore != null, digest)
+        val systemPrompt = buildSystemPrompt(skills, memoryStore != null, digest, concise)
 
         if (config.provider == ProviderSettings.PROVIDER_OPENAI) {
             requestOpenAi(context, config.apiKey, config.model, systemPrompt, chat.messages, skills, memoryStore)
@@ -85,8 +89,18 @@ object ChatApi {
         return store
     }
 
-    private fun buildSystemPrompt(skills: List<Skill>, memoryActive: Boolean, digest: String?): String {
+    private val CONCISE_PROMPT = """
+        Sprachdialog-Modus: Der Nutzer spricht mit dir und hört deine Antwort
+        über eine Sprachausgabe. Fasse dich deshalb besonders kurz — zwei,
+        drei gesprochene Sätze, keine Aufzählungen, kein Markdown, keine
+        Codeblöcke. Nenne erst dann mehr Details, wenn der Nutzer nachfragt.
+    """.trimIndent()
+
+    private fun buildSystemPrompt(skills: List<Skill>, memoryActive: Boolean, digest: String?, concise: Boolean): String {
         val parts = mutableListOf(BASE_SYSTEM_PROMPT)
+        if (concise) {
+            parts.add(CONCISE_PROMPT)
+        }
         if (memoryActive && digest != null) {
             parts.add(digest.trim())
         }

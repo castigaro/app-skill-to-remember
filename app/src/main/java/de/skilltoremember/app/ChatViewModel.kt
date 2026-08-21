@@ -30,6 +30,7 @@ class ChatViewModel(private val app: Application) : AndroidViewModel(app) {
         val busy: Boolean = false,
         val error: String? = null,
         val revision: Long = 0L,
+        val dialogMode: Boolean = false,
     )
 
     private val _state = MutableStateFlow(UiState())
@@ -48,12 +49,17 @@ class ChatViewModel(private val app: Application) : AndroidViewModel(app) {
     /** Fordert die Antwort erneut an (Retry nach Fehler). */
     fun retry(chat: Chat) = generate(chat)
 
+    /** Sprachdialog an/aus — lebt hier, damit der Zustand Rotationen überlebt. */
+    fun setDialogMode(enabled: Boolean) {
+        _state.value = _state.value.copy(dialogMode = enabled)
+    }
+
     private fun generate(chat: Chat) {
         if (_state.value.busy) return
         _state.value = _state.value.copy(busy = true, error = null)
         viewModelScope.launch {
             try {
-                val reply = ChatApi.reply(app, chat)
+                val reply = ChatApi.reply(app, chat, concise = _state.value.dialogMode)
                 chat.messages.add(Message(Message.ROLE_ASSISTANT, reply))
                 withContext(Dispatchers.IO) { ChatStore.save(app) }
                 _state.value = _state.value.copy(busy = false, revision = _state.value.revision + 1)

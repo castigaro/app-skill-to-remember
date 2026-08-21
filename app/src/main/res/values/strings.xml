@@ -20,6 +20,10 @@
     <string name="speech_prompt">Sprich deine Nachricht …</string>
     <string name="speech_unavailable">Spracheingabe ist auf diesem Gerät nicht verfügbar.</string>
     <string name="assistant_writing">Der Assistent schreibt …</string>
+    <string name="dialog_mode">Dialogmodus</string>
+    <string name="dialog_mode_on">Dialogmodus aktiv — Antworten werden vorgelesen, danach hört die App wieder zu. Spracheingabe abbrechen beendet ihn.</string>
+    <string name="dialog_mode_off">Dialogmodus beendet.</string>
+    <string name="tts_unavailable">Sprachausgabe ist auf diesem Gerät nicht verfügbar.</string>
     <string name="chat_error">Fehler: %1$s</string>
     <string name="retry">Erneut</string>
 
