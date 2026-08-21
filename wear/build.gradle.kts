@@ -13,8 +13,10 @@ android {
         applicationId = "de.skilltoremember.app"
         minSdk = 30 // Wear OS 3 (Galaxy Watch 4)
         targetSdk = 33
-        versionCode = 1
-        versionName = "0.1.0"
+        // Kommt in der CI aus der Laufnummer (jeder main-Build ist eine neuere
+        // Version, ohne manuelles Hochzählen); lokal gebaut bleibt es 1.
+        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
+        versionName = "0.2.0"
     }
 
     val releaseKeystore = rootProject.file("keystore/release.jks")

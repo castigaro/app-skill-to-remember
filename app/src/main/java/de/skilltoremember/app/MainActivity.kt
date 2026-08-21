@@ -2,6 +2,11 @@ package de.skilltoremember.app
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
+import de.skilltoremember.app.update.UpdateChecker
+import kotlinx.coroutines.launch
+import java.io.File
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -33,6 +38,39 @@ class MainActivity : AppCompatActivity() {
         binding.chatList.adapter = adapter
 
         binding.fabNewChat.setOnClickListener { startNewChat() }
+
+        checkForUpdate()
+    }
+
+    /** Einmal pro App-Start: gibt es im GitHub-Release eine neuere Version? */
+    private fun checkForUpdate() {
+        lifecycleScope.launch {
+            val update = UpdateChecker.check(applicationContext) ?: return@launch
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle(R.string.update_available_title)
+                .setMessage(getString(R.string.update_available_message, update.versionName))
+                .setPositiveButton(R.string.update_install) { _, _ -> downloadAndInstall(update) }
+                .setNegativeButton(R.string.update_later, null)
+                .show()
+        }
+    }
+
+    private fun downloadAndInstall(update: UpdateChecker.UpdateInfo) {
+        Snackbar.make(binding.root, R.string.update_downloading, Snackbar.LENGTH_LONG).show()
+        lifecycleScope.launch {
+            val target = File(File(cacheDir, "updates"), "skilltoremember.apk")
+            val ok = UpdateChecker.download(update.apkUrl, target)
+            if (!ok) {
+                Snackbar.make(binding.root, R.string.update_failed, Snackbar.LENGTH_LONG).show()
+                return@launch
+            }
+            val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", target)
+            val intent = Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { startActivity(intent) }
+                .onFailure { Snackbar.make(binding.root, R.string.update_failed, Snackbar.LENGTH_LONG).show() }
+        }
     }
 
     override fun onResume() {

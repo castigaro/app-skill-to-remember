@@ -113,4 +113,12 @@
     <string name="watch_send">Einstellungen an die Uhr senden</string>
     <string name="watch_sent">Übertragen — die Uhr übernimmt die Einstellungen, sobald sie verbunden ist und die App dort geöffnet wird.</string>
     <string name="watch_send_failed">Übertragung fehlgeschlagen: %1$s</string>
+
+    <!-- In-App-Update -->
+    <string name="update_available_title">Update verfügbar</string>
+    <string name="update_available_message">Version %1$s ist bereit. Jetzt herunterladen und installieren?</string>
+    <string name="update_install">Installieren</string>
+    <string name="update_later">Später</string>
+    <string name="update_downloading">Update wird heruntergeladen …</string>
+    <string name="update_failed">Update fehlgeschlagen — bitte später erneut versuchen.</string>
 </resources>

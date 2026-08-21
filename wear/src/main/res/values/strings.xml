@@ -10,4 +10,5 @@
     <string name="wear_tts_missing">Keine Sprachausgabe installiert — Antworten erscheinen nur als Text.</string>
     <string name="wear_speech_unavailable">Spracheingabe ist auf dieser Uhr nicht verfügbar.</string>
     <string name="wear_chat_title">Am Handgelenk</string>
+    <string name="wear_update_available">Version %1$s verfügbar — Uhr-App per adb aktualisieren.</string>
 </resources>

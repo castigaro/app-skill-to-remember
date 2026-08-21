@@ -27,6 +27,7 @@ import de.skilltoremember.app.data.memory.GitHubMemorySync
 import de.skilltoremember.app.data.memory.MemoryClock
 import de.skilltoremember.app.data.memory.MemoryEngine
 import de.skilltoremember.app.data.memory.MemorySettings
+import de.skilltoremember.app.update.UpdateChecker
 import de.skilltoremember.app.wear.databinding.ActivityWearBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -93,6 +94,20 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
 
         updateStatus()
         loadStoredConfig()
+        checkForUpdate()
+    }
+
+    /** Installieren geht auf der Uhr nur per adb — hier gibt es deshalb nur den Hinweis. */
+    private fun checkForUpdate() {
+        lifecycleScope.launch {
+            UpdateChecker.check(applicationContext)?.let { update ->
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.wear_update_available, update.versionName),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
     }
 
     override fun onResume() {
