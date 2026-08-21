@@ -2,6 +2,7 @@ package de.skilltoremember.app
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import com.google.android.gms.wearable.PutDataMapRequest
@@ -20,6 +21,7 @@ import de.skilltoremember.app.data.memory.MemoryClock
 import de.skilltoremember.app.data.memory.MemoryEngine
 import de.skilltoremember.app.data.memory.MemorySettings
 import de.skilltoremember.app.databinding.ActivitySettingsBinding
+import de.skilltoremember.app.update.UpdateChecker
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,6 +53,7 @@ class SettingsActivity : AppCompatActivity() {
         setUpMemorySection()
         setUpVoiceSection()
         binding.buttonSendToWatch.setOnClickListener { sendConfigToWatch() }
+        setUpUpdateSection()
     }
 
     override fun onDestroy() {
@@ -410,6 +413,41 @@ class SettingsActivity : AppCompatActivity() {
         val tts = voicePreviewTts ?: return
         VoiceSettings.apply(this, tts)
         tts.speak(getString(R.string.voice_test_sentence), TextToSpeech.QUEUE_FLUSH, null, "voice-preview")
+    }
+
+    // ======================================================================
+    // App-Updates: installierte Version zeigen, manuell prüfen — mit klarer
+    // Rückmeldung, warum ggf. nichts kommt (Repo privat / offline).
+    // ======================================================================
+
+    private fun setUpUpdateSection() {
+        val info = packageManager.getPackageInfo(packageName, 0)
+        val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            info.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
+        }
+        binding.appVersionText.text = getString(R.string.app_version_label, info.versionName ?: "?", code)
+        binding.buttonCheckUpdate.setOnClickListener { checkForUpdateNow() }
+    }
+
+    private fun checkForUpdateNow() {
+        binding.buttonCheckUpdate.isEnabled = false
+        lifecycleScope.launch {
+            val result = UpdateChecker.checkDetailed(applicationContext)
+            binding.buttonCheckUpdate.isEnabled = true
+            when (result) {
+                is UpdateChecker.CheckResult.UpdateAvailable ->
+                    UpdateInstaller.offer(this@SettingsActivity, binding.root, result.info)
+                UpdateChecker.CheckResult.UpToDate -> {
+                    val versionName = packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+                    Snackbar.make(binding.root, getString(R.string.update_up_to_date, versionName), Snackbar.LENGTH_LONG).show()
+                }
+                UpdateChecker.CheckResult.Unreachable ->
+                    Snackbar.make(binding.root, R.string.update_check_failed, Snackbar.LENGTH_LONG).show()
+            }
+        }
     }
 
     companion object {

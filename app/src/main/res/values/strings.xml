@@ -121,4 +121,9 @@
     <string name="update_later">Später</string>
     <string name="update_downloading">Update wird heruntergeladen …</string>
     <string name="update_failed">Update fehlgeschlagen — bitte später erneut versuchen.</string>
+    <string name="title_app_update">App-Updates</string>
+    <string name="app_version_label">Installiert: Version %1$s (Build %2$d). Beim App-Start wird automatisch geprüft; hier zusätzlich von Hand.</string>
+    <string name="update_check_now">Jetzt nach Updates suchen</string>
+    <string name="update_up_to_date">Du bist auf dem neuesten Stand (Version %1$s).</string>
+    <string name="update_check_failed">Update-Prüfung nicht möglich — das GitHub-Repo ist noch privat oder es besteht gerade keine Verbindung.</string>
 </resources>

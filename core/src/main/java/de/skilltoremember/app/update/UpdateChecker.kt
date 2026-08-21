@@ -23,6 +23,13 @@ object UpdateChecker {
 
     data class UpdateInfo(val versionCode: Long, val versionName: String, val apkUrl: String)
 
+    /** Ergebnis der Prüfung — unterscheidet "aktuell" von "nicht prüfbar". */
+    sealed class CheckResult {
+        data class UpdateAvailable(val info: UpdateInfo) : CheckResult()
+        object UpToDate : CheckResult()
+        object Unreachable : CheckResult()
+    }
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
@@ -50,17 +57,26 @@ object UpdateChecker {
         }
     }.getOrDefault(Long.MAX_VALUE) // im Zweifel lieber kein Update anbieten
 
-    /** Liefert die neuere Version — oder null, wenn es keine gibt oder der Abruf scheitert. */
-    suspend fun check(context: Context): UpdateInfo? = withContext(Dispatchers.IO) {
+    /** Prüfung mit unterscheidbarem Ergebnis (für den manuellen "Nach Updates suchen"-Knopf). */
+    suspend fun checkDetailed(context: Context): CheckResult = withContext(Dispatchers.IO) {
         runCatching {
             val request = Request.Builder().url(versionJsonUrl).build()
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@runCatching null
-                val info = parse(response.body?.string().orEmpty()) ?: return@runCatching null
-                if (info.versionCode > installedVersionCode(context)) info else null
+                if (!response.isSuccessful) return@runCatching CheckResult.Unreachable
+                val info = parse(response.body?.string().orEmpty())
+                    ?: return@runCatching CheckResult.Unreachable
+                if (info.versionCode > installedVersionCode(context)) {
+                    CheckResult.UpdateAvailable(info)
+                } else {
+                    CheckResult.UpToDate
+                }
             }
-        }.getOrNull()
+        }.getOrDefault(CheckResult.Unreachable)
     }
+
+    /** Liefert die neuere Version — oder null, wenn es keine gibt oder der Abruf scheitert. */
+    suspend fun check(context: Context): UpdateInfo? =
+        (checkDetailed(context) as? CheckResult.UpdateAvailable)?.info
 
     /** Lädt die APK nach [target]; true bei Erfolg. */
     suspend fun download(url: String, target: File): Boolean = withContext(Dispatchers.IO) {
