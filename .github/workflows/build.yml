@@ -47,6 +47,11 @@ jobs:
           else
             cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/skilltoremember.apk"
           fi
+          if [ -f wear/build/outputs/apk/release/wear-release.apk ]; then
+            cp wear/build/outputs/apk/release/wear-release.apk "$GITHUB_WORKSPACE/skilltoremember-wear.apk"
+          else
+            cp wear/build/outputs/apk/release/wear-release-unsigned.apk "$GITHUB_WORKSPACE/skilltoremember-wear.apk"
+          fi
 
       - name: Versions-Manifest erzeugen
         run: |
@@ -67,6 +72,7 @@ jobs:
           path: |
             skilltoremember.apk
             skilltoremember-debug.apk
+            skilltoremember-wear.apk
             skilltoremember-version.json
 
       - name: Publish release
@@ -84,6 +90,8 @@ jobs:
               Schlüssel signiert, spätere Updates lassen sich direkt darüber
               installieren.
             - **skilltoremember-debug.apk** — Debug-Version für Entwicklung/Tests.
+            - **skilltoremember-wear.apk** — Wear-OS-App für die Smartwatch
+              (Installation per adb, siehe README).
 
             Zum Installieren auf dem Handy: APK herunterladen, öffnen und die
             Installation aus unbekannten Quellen erlauben. In den
@@ -91,4 +99,5 @@ jobs:
           files: |
             skilltoremember.apk
             skilltoremember-debug.apk
+            skilltoremember-wear.apk
             skilltoremember-version.json

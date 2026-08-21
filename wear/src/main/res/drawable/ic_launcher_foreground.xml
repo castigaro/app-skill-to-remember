@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Chat-Sprechblase mit drei ausgestanzten "Tipp-Punkten" -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M20,20 H88 V76 H50 L36,92 V76 H20 Z M34,41 h10 v10 h-10 z M49,41 h10 v10 h-10 z M64,41 h10 v10 h-10 z" />
+</vector>

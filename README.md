@@ -39,10 +39,44 @@ App austauschbar.
 eintragen (Benutzername, Repo-Name, Branch, Personal Access Token mit
 `Contents: Read and write` auf genau dieses Repo) → Verbinden.
 
+## Smartwatch (Wear OS)
+
+Die App gibt es auch als reinen Sprach-Client für Wear-OS-Uhren (ab Wear
+OS 3, z. B. Galaxy Watch 4): Aufs Mikrofon tippen, sprechen, die Antwort
+wird vorgelesen, danach hört die Uhr automatisch wieder zu. Antworten
+kommen bewusst knapp (Details auf Nachfrage). Die Uhr nutzt dieselben
+Skills und dasselbe Gedächtnis-Repo wie das Handy.
+
+**Einstellungen ohne Tipperei:** In der Handy-App unter Einstellungen →
+„Einstellungen an die Uhr senden" wandern API-Key, Gedächtnis-Zugang und
+Stimm-Einstellungen per Bluetooth an die Uhr (verschlüsselt, nur an die
+SkillToRemember-App mit gleicher Signatur).
+
+**Installation per adb** (einmalig, die Uhr kann keine APKs herunterladen):
+
+1. *Auf der Uhr:* Einstellungen → Info zur Uhr → Softwareinformationen →
+   fünfmal auf „Softwareversion" tippen (schaltet Entwickleroptionen frei).
+   Dann Einstellungen → Entwickleroptionen → „ADB-Debugging" und
+   „Debugging über WLAN" aktivieren. Die angezeigte IP-Adresse merken;
+   Uhr und PC müssen im selben WLAN sein.
+2. *Am PC:* Googles „SDK Platform Tools" herunterladen
+   (https://developer.android.com/tools/releases/platform-tools) und
+   entpacken — darin liegt `adb`.
+3. `skilltoremember-wear.apk` aus dem GitHub-Release herunterladen
+   (wichtig: die Release-Variante, nur sie trägt dieselbe Signatur wie
+   die Handy-App — sonst verweigert die Uhr die Einstellungs-Übernahme).
+4. Im Terminal/der Eingabeaufforderung im Platform-Tools-Ordner:
+   `./adb connect <IP-der-Uhr>:5555` (Anfrage auf der Uhr bestätigen),
+   dann `./adb install -r skilltoremember-wear.apk`,
+   abschließend `./adb disconnect`.
+5. Debugging auf der Uhr wieder ausschalten (spart Akku), App öffnen,
+   am Handy „Einstellungen an die Uhr senden" — fertig.
+
 ## Build
 
-Standard-Gradle-Projekt (Kotlin, AGP 8.5, compileSdk 34), keine externen
-Module.
+Standard-Gradle-Projekt (Kotlin, AGP 8.5, compileSdk 34) mit drei Modulen:
+`:app` (Handy), `:wear` (Uhr) und `:core` (gemeinsame Logik — KI-Anbindung,
+Speicher, Gedächtnis-Engine).
 
 ```
 git clone https://github.com/AppSonar/app-skill-to-remember

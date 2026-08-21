@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
@@ -48,6 +50,7 @@ class SettingsActivity : AppCompatActivity() {
         setUpProviderSection()
         setUpMemorySection()
         setUpVoiceSection()
+        binding.buttonSendToWatch.setOnClickListener { sendConfigToWatch() }
     }
 
     override fun onDestroy() {
@@ -311,6 +314,39 @@ class SettingsActivity : AppCompatActivity() {
                 },
             )
         }
+    }
+
+    // ======================================================================
+    // Smartwatch: Einstellungen per Data-Layer an die Wear-OS-App schicken.
+    // Zustellung nur an die App mit gleicher applicationId und Signatur auf
+    // der gekoppelten Uhr; das Data Item bleibt gespeichert, bis es dort
+    // abgeholt wird.
+    // ======================================================================
+
+    private fun sendConfigToWatch() {
+        val request = PutDataMapRequest.create("/skilltoremember/config").apply {
+            dataMap.putString("primaryProvider", ProviderSettings.getPrimaryProvider(this@SettingsActivity))
+            dataMap.putString("anthropicKey", ProviderSettings.getKey(this@SettingsActivity, ProviderSettings.PROVIDER_ANTHROPIC))
+            dataMap.putString("anthropicModel", ProviderSettings.getModel(this@SettingsActivity, ProviderSettings.PROVIDER_ANTHROPIC))
+            dataMap.putBoolean("anthropicEnabled", ProviderSettings.isEnabled(this@SettingsActivity, ProviderSettings.PROVIDER_ANTHROPIC))
+            dataMap.putString("openaiKey", ProviderSettings.getKey(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
+            dataMap.putString("openaiModel", ProviderSettings.getModel(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
+            dataMap.putBoolean("openaiEnabled", ProviderSettings.isEnabled(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
+            dataMap.putString("memOwner", MemorySettings.getOwner(this@SettingsActivity))
+            dataMap.putString("memRepo", MemorySettings.getRepo(this@SettingsActivity))
+            dataMap.putString("memBranch", MemorySettings.getBranch(this@SettingsActivity))
+            dataMap.putString("memToken", MemorySettings.getToken(this@SettingsActivity))
+            dataMap.putFloat("rate", VoiceSettings.getRate(this@SettingsActivity))
+            dataMap.putFloat("pitch", VoiceSettings.getPitch(this@SettingsActivity))
+            // Zeitstempel erzwingt ein Change-Event, auch wenn sich sonst nichts geändert hat.
+            dataMap.putLong("sentAt", System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+
+        Wearable.getDataClient(this).putDataItem(request)
+            .addOnSuccessListener { Snackbar.make(binding.root, R.string.watch_sent, Snackbar.LENGTH_LONG).show() }
+            .addOnFailureListener { e ->
+                Snackbar.make(binding.root, getString(R.string.watch_send_failed, e.message ?: "?"), Snackbar.LENGTH_LONG).show()
+            }
     }
 
     // ======================================================================

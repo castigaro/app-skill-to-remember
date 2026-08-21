@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "SkillToRemember"
 include(":app")
+include(":core")
+include(":wear")

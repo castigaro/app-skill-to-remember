@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SkillToRemember</string>
+    <string name="wear_speak">Sprechen</string>
+    <string name="wear_need_config">Noch keine Einstellungen.\nAm Handy: Einstellungen → „Einstellungen an die Uhr senden“.</string>
+    <string name="wear_tap_to_talk">Zum Sprechen aufs Mikrofon tippen.</string>
+    <string name="wear_thinking">Denke nach …</string>
+    <string name="wear_error">Fehler: %1$s</string>
+    <string name="wear_config_received">Einstellungen vom Handy übernommen.</string>
+    <string name="wear_tts_missing">Keine Sprachausgabe installiert — Antworten erscheinen nur als Text.</string>
+    <string name="wear_speech_unavailable">Spracheingabe ist auf dieser Uhr nicht verfügbar.</string>
+    <string name="wear_chat_title">Am Handgelenk</string>
+</resources>
