@@ -20,6 +20,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
 /**
@@ -46,6 +48,7 @@ object ChatApi {
     private const val TOOL_RECALL = "recall"
     private const val TOOL_FORGET = "forget"
     private const val MAX_TOOL_ROUNDS = 6
+    private const val MEMORY_PULL_INTERVAL_SECONDS = 5 * 60L
 
     private val JSON = "application/json".toMediaType()
 
@@ -71,6 +74,7 @@ object ChatApi {
             ?: throw ApiException("Kein aktiver API-Key — in den Einstellungen hinterlegen oder aktivieren.")
         val skills = SkillStore.getEnabled(context)
         val memoryStore = memoryStoreIfActive(context, skills)
+        memoryStore?.let { pullMemoryIfStale(context, it) }
         val digest = memoryStore?.let { runCatching { MemoryEngine.boot(it).digest }.getOrNull() }
         val systemPrompt = buildSystemPrompt(skills, memoryStore != null, digest, concise)
 
@@ -95,6 +99,27 @@ object ChatApi {
         drei gesprochene Sätze, keine Aufzählungen, kein Markdown, keine
         Codeblöcke. Nenne erst dann mehr Details, wenn der Nutzer nachfragt.
     """.trimIndent()
+
+    /** Abgleich fällig, wenn der letzte Sync fehlt, unlesbar oder älter als das Intervall ist. */
+    internal fun isMemoryPullDue(lastSyncIso: String?, now: Instant): Boolean {
+        val last = lastSyncIso?.let { runCatching { MemoryClock.parseIso(it) }.getOrNull() } ?: return true
+        return ChronoUnit.SECONDS.between(last, now) >= MEMORY_PULL_INTERVAL_SECONDS
+    }
+
+    /**
+     * Holt vor der Antwort die Erinnerungen der anderen Geräte — gedrosselt, damit
+     * nicht jede Nachricht die GitHub-API anfragt. Nach dem Pull wird der Digest neu
+     * gebaut (der Pull selbst schreibt index.json nicht). Scheitert der Abgleich
+     * (offline), antwortet die App mit dem lokalen Stand.
+     */
+    private fun pullMemoryIfStale(context: Context, store: MemoryStore) {
+        if (!isMemoryPullDue(MemorySettings.getLastSync(context), MemoryClock.now())) return
+        runCatching {
+            GitHubMemorySync.pull(store, MemorySettings.config(context))
+            MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
+            MemorySettings.setLastSync(context, MemoryClock.isoNow())
+        }
+    }
 
     private fun buildSystemPrompt(skills: List<Skill>, memoryActive: Boolean, digest: String?, concise: Boolean): String {
         val parts = mutableListOf(BASE_SYSTEM_PROMPT)
@@ -208,6 +233,7 @@ object ChatApi {
     private fun trySyncAfterWrite(context: Context, store: MemoryStore): Boolean = runCatching {
         val config = MemorySettings.config(context)
         GitHubMemorySync.pull(store, config)
+        MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
         GitHubMemorySync.push(store, config, "memory: ${MemoryClock.isoNow()}")
         val meta = store.meta()
         meta.put("dirty", false)
