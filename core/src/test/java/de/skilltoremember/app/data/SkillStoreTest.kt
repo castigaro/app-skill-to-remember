@@ -41,6 +41,28 @@ class SkillStoreTest {
     }
 
     @Test
+    fun `Anleitung des eingebauten Skills wird bei App-Update nachgezogen`() {
+        // Alte Installation simulieren: geseedet ohne Versions-Marke, alter
+        // Anleitungstext, Name/Beschreibung/Schalter vom Nutzer angepasst.
+        val old = Skill(
+            id = BuiltInSkills.HUMANOID_BEHAVIOR.id, name = "mein-gedaechtnis",
+            description = "eigene Beschreibung", body = "alter Anleitungstext",
+            enabled = false, builtIn = true,
+        )
+        File(context.filesDir, "skills.json").writeText(org.json.JSONArray().put(old.toJson()).toString())
+        context.getSharedPreferences("skills_meta", Context.MODE_PRIVATE)
+            .edit().putBoolean("builtInsSeeded", true).apply()
+
+        SkillStore.resetForTest()
+        val upgraded = SkillStore.get(context, BuiltInSkills.HUMANOID_BEHAVIOR.id)!!
+        assertEquals(BuiltInSkills.HUMANOID_BEHAVIOR.body, upgraded.body)
+        assertEquals("mein-gedaechtnis", upgraded.name)
+        assertEquals("eigene Beschreibung", upgraded.description)
+        assertTrue(!upgraded.enabled)
+        assertEquals(1, SkillStore.getAll(context).size)
+    }
+
+    @Test
     fun `Skills ueberleben einen Neustart`() {
         val skill = Skill(name = "eigener-skill", description = "Test", body = "Tu dies und das.")
         SkillStore.add(context, skill)

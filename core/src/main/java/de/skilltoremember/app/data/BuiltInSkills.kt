@@ -13,6 +13,13 @@ package de.skilltoremember.app.data
  */
 object BuiltInSkills {
 
+    /**
+     * Wird erhöht, wenn sich der Anleitungstext ändert — [SkillStore] zieht
+     * ihn dann bei bestehenden Installationen nach (nur den Text; Name,
+     * Beschreibung und Aktiv-Schalter des Nutzers bleiben unangetastet).
+     */
+    const val VERSION = 2
+
     val HUMANOID_BEHAVIOR = Skill(
         id = "builtin-humanoid-behavior",
         name = "humanoid-behavior",
@@ -73,9 +80,15 @@ object BuiltInSkills {
               because Y", not a quoted dialogue. One statement per entry.
             - Confidence is separate from salience: something can matter a great deal and
               still be uncertain. An inference the user did not confirm gets low confidence.
-            - Correct rather than duplicate: when a stored fact turns out wrong, `forget` it
-              and store the correction. Contradictory entries both decay and confuse the
-              digest.
+            - Memory is shared across all devices (phone, watch). An entry you do not
+              remember creating was written on another device — it is real. Never treat an
+              unfamiliar entry as a test leftover or a mistake.
+            - `forget` only on the user's explicit request. Correct rather than duplicate:
+              when the user says a stored fact is wrong, `forget` it and store the
+              correction. Never delete an entry on your own initiative — and never to make
+              the store match something you said earlier. If the store contradicts your
+              previous answer, the store is right: admit the mistake and use the stored
+              fact.
             - Memory can be personal. Never read it out wholesale, paste it into a file the
               user did not ask for, or send it to any external service.
             - When the user asks what you know, answer from `recall`, not from impression.
@@ -85,7 +98,8 @@ object BuiltInSkills {
             - `remember(layer, topic, value, salience, confidence?, keywords?)` — store or
               reinforce one fact.
             - `recall(query, layer?, topic?)` — retrieve matching memories.
-            - `forget(id?, topic?)` — archive a wrong or outdated entry.
+            - `forget(id?, topic?)` — archive a wrong or outdated entry, only when the
+              user explicitly asks for it.
 
             These only appear once a memory repo is connected (Einstellungen →
             Gedächtnis). Without one, this skill has nothing to work with — say so if asked

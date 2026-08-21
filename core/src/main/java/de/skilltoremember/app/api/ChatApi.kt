@@ -293,7 +293,7 @@ object ChatApi {
         return listOf(
             tool(TOOL_REMEMBER, "Speichert oder verstärkt einen Gedächtnis-Eintrag.", rememberSchema),
             tool(TOOL_RECALL, "Sucht im Gedächtnis nach passenden Einträgen.", recallSchema),
-            tool(TOOL_FORGET, "Archiviert einen falschen oder veralteten Eintrag.", forgetSchema),
+            tool(TOOL_FORGET, "Archiviert einen falschen oder veralteten Eintrag — nur auf ausdrücklichen Wunsch des Nutzers verwenden, nie aus eigener Initiative.", forgetSchema),
         )
     }
 
