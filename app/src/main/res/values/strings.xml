@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SkillToRemember</string>
+
+    <!-- Chat-Liste -->
+    <string name="empty_state">Noch keine Chats.\n\nTippe auf +, um mit dem Assistenten zu schreiben.</string>
+    <string name="untitled_chat">Neuer Chat</string>
+    <string name="new_chat">Neuer Chat</string>
+    <string name="delete_chat">Chat löschen</string>
+    <string name="delete_chat_message">„%1$s“ wirklich löschen?</string>
+    <string name="delete">Löschen</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="needs_key">Zum Chatten braucht die App einen API-Key. Bitte in den Einstellungen eintragen.</string>
+
+    <!-- Chat -->
+    <string name="message_hint">Nachricht …</string>
+    <string name="send_message">Nachricht senden</string>
+    <string name="speech_input">Spracheingabe</string>
+    <string name="speech_prompt">Sprich deine Nachricht …</string>
+    <string name="speech_unavailable">Spracheingabe ist auf diesem Gerät nicht verfügbar.</string>
+    <string name="assistant_writing">Der Assistent schreibt …</string>
+    <string name="chat_error">Fehler: %1$s</string>
+    <string name="retry">Erneut</string>
+
+    <!-- Skills -->
+    <string name="title_skills">Skills</string>
+    <string name="empty_skills">Noch keine Skills.\n\nTippe auf +, um einen anzulegen, oder importiere über das Menü.</string>
+    <string name="untitled_skill">Neuer Skill</string>
+    <string name="new_skill_title">Neuer Skill</string>
+    <string name="edit_skill_title">Skill bearbeiten</string>
+    <string name="delete_skill">Skill löschen</string>
+    <string name="delete_skill_message">„%1$s“ wirklich löschen?</string>
+    <string name="import_file">Einzelne SKILL.md</string>
+    <string name="import_zip">ZIP-Datei (Repo-Download)</string>
+    <string name="import_error">Import fehlgeschlagen: %1$s</string>
+    <string name="import_too_large">Datei ist größer als 2 MB — keine SKILL.md.</string>
+    <string name="import_done">Skill „%1$s“ importiert</string>
+    <string name="import_multi_done">%1$d Skill(s) importiert</string>
+    <string name="import_none_found">Keine SKILL.md-Dateien gefunden.</string>
+    <string name="skill_built_in_note">Fest eingebauter Skill (★). Name und Beschreibung lassen sich anpassen, gelöscht werden kann er nicht.</string>
+    <string name="skill_edit_intro">Name und Beschreibung sieht das Modell immer — daran entscheidet es, ob der Skill zur Anfrage passt. Die Anleitung wird erst geladen, wenn der Skill tatsächlich gebraucht wird.</string>
+    <string name="skill_name_hint">Name (kurz, eindeutig)</string>
+    <string name="skill_description_hint">Beschreibung — wann soll dieser Skill greifen?</string>
+    <string name="skill_body_hint">Anleitung (Markdown, wie SKILL.md)</string>
+    <string name="skill_fields_required">Name, Beschreibung und Anleitung dürfen nicht leer sein.</string>
+
+    <!-- Einstellungen: KI-Provider -->
+    <string name="title_settings">Einstellungen</string>
+    <string name="action_settings">Einstellungen</string>
+    <string name="save">Speichern</string>
+    <string name="privacy_note">Hinweis: Deine Nachrichten werden zum Chatten an den gewählten KI-Anbieter übertragen. Keys und Tokens werden nur lokal auf diesem Gerät gespeichert.</string>
+    <string name="provider_choose_label">KI-Anbieter wählen</string>
+    <string name="primary_provider_label">Primärer Anbieter</string>
+    <string name="provider_anthropic">Anthropic (Claude)</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="api_key_label">API-Key</string>
+    <string name="model_label">Modell</string>
+    <string name="model_hint">Modell aus der Liste wählen oder eine eigene Modell-ID eintippen.</string>
+    <string name="key_enabled">Key aktiv</string>
+    <string name="key_delete">Key löschen</string>
+    <string name="key_deleted">Key gelöscht</string>
+    <string name="key_register_anthropic">Noch keinen API-Key? Bei Anthropic registrieren →</string>
+    <string name="no_browser">Kein Browser installiert — Adresse lässt sich nicht öffnen.</string>
+    <string name="key_register_openai">Noch keinen API-Key? Bei OpenAI registrieren →</string>
+    <string name="add_second_provider">Zweiten Anbieter einrichten: %1$s</string>
+    <string name="api_costs">Bisherige KI-Kosten: ~%1$s $</string>
+    <string name="api_costs_reset">Zurücksetzen</string>
+    <string name="api_costs_reset_done">Kostenzähler zurückgesetzt</string>
+    <string name="api_costs_disclaimer">Der Kostenzähler ist ein unverbindlicher Schätzwert aus den Token-Zahlen der API-Antworten. Verbindlich ist allein die Abrechnung im Konto des jeweiligen Anbieters.</string>
+    <string name="provider_settings_save">Speichern</string>
+    <string name="provider_settings_saved">Einstellungen gespeichert</string>
+
+    <!-- Einstellungen: Gedächtnis -->
+    <string name="title_memory">Gedächtnis</string>
+    <string name="memory_intro">Der eingebaute Skill „humanoid-behavior“ merkt sich über Chats hinweg, was zählt — gespeichert in einem privaten GitHub-Repo, das nur dir gehört. Leeres privates Repo anlegen und hier eintragen.</string>
+    <string name="memory_owner_hint">GitHub-Benutzername oder Organisation</string>
+    <string name="memory_repo_hint">Repository-Name</string>
+    <string name="memory_branch_hint">Branch (Standard: main)</string>
+    <string name="memory_token_hint">Personal Access Token (Contents: Read and write)</string>
+    <string name="memory_fields_required">Benutzername, Repository und Token dürfen nicht leer sein.</string>
+    <string name="memory_connect">Verbinden</string>
+    <string name="memory_sync_now">Jetzt synchronisieren</string>
+    <string name="memory_status_not_connected">Nicht verbunden.</string>
+    <string name="memory_status_connected_no_sync">Verbunden, noch nicht synchronisiert.</string>
+    <string name="memory_status_synced">Verbunden. Letzter Sync: %1$s</string>
+    <string name="memory_connect_ready">Neues Gedächtnis angelegt.</string>
+    <string name="memory_connect_restored">Bestehendes Gedächtnis wiederhergestellt.</string>
+    <string name="memory_sync_done">Synchronisiert.</string>
+    <string name="memory_error">Fehler: %1$s</string>
+</resources>

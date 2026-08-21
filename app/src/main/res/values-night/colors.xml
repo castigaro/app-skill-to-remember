@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Helleres Teal für Akzente auf dunklem Untergrund. -->
+    <color name="primary">#3E9C89</color>
+    <color name="primary_dark">#2C7566</color>
+    <color name="secondary">#7FC9B9</color>
+    <!-- Toolbar bleibt dunkel, damit der weiße Titel darauf gut lesbar ist. -->
+    <color name="toolbar_bg">#0B2B26</color>
+</resources>

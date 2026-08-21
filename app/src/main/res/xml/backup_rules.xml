@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto-Backup (bis API 30): API-Keys und das GitHub-Token liegen im Klartext
+     in diesen Prefs und gehören nicht ins Cloud-Backup. Chats und Skills
+     bleiben gesichert. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="settings.xml" />
+    <exclude domain="sharedpref" path="memory_settings.xml" />
+</full-backup-content>

@@ -1,0 +1,94 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore signing keystore
+        run: |
+          mkdir -p keystore
+          if [ -n "$RELEASE_KEYSTORE" ]; then
+            echo "$RELEASE_KEYSTORE" | base64 -d > keystore/release.jks
+          fi
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+
+      - name: Unit-Tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Build APKs
+        run: ./gradlew assembleDebug assembleRelease --no-daemon
+        env:
+          ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+
+      - name: Rename APKs
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/skilltoremember-debug.apk"
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/skilltoremember.apk"
+          else
+            cp app/build/outputs/apk/release/app-release-unsigned.apk "$GITHUB_WORKSPACE/skilltoremember.apk"
+          fi
+
+      - name: Versions-Manifest erzeugen
+        run: |
+          VERSION_CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          cat > "$GITHUB_WORKSPACE/skilltoremember-version.json" <<EOF
+          {
+            "versionCode": $VERSION_CODE,
+            "versionName": "$VERSION_NAME",
+            "apkUrl": "https://github.com/AppSonar/app-skill-to-remember/releases/download/latest/skilltoremember.apk"
+          }
+          EOF
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: skilltoremember-apks
+          path: |
+            skilltoremember.apk
+            skilltoremember-debug.apk
+            skilltoremember-version.json
+
+      - name: Publish release
+        # Nur vom main-Branch veröffentlichen — ein manueller Lauf auf einem
+        # Feature-Branch (workflow_dispatch) soll das "latest"-Release nicht überschreiben.
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: SkillToRemember
+          body: |
+            Automatisch gebaute APKs von SkillToRemember.
+
+            - **skilltoremember.apk** — Release-Version (empfohlen). Mit festem
+              Schlüssel signiert, spätere Updates lassen sich direkt darüber
+              installieren.
+            - **skilltoremember-debug.apk** — Debug-Version für Entwicklung/Tests.
+
+            Zum Installieren auf dem Handy: APK herunterladen, öffnen und die
+            Installation aus unbekannten Quellen erlauben. In den
+            App-Einstellungen einen Anthropic- oder OpenAI-API-Key hinterlegen.
+          files: |
+            skilltoremember.apk
+            skilltoremember-debug.apk
+            skilltoremember-version.json

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SkillToRemember" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <!-- Ohne explizite Farbe bliebe die Statusleiste auf dem lila
+             Material-Default. Sie folgt der Toolbar — hell wie dunkel, da
+             toolbar_bg per values-night überschrieben wird. -->
+        <item name="android:statusBarColor">@color/toolbar_bg</item>
+    </style>
+
+    <!-- Feste Toolbar-Farbe statt ?attr/colorPrimary (im Dark-Mode dunkler,
+         siehe values-night/colors.xml). Titel/Icons brauchen das dunkle
+         ActionBar-Overlay (weiß auf farbiger Leiste); das Dreipunkt-Menü
+         bekommt ein eigenes, Tag/Nacht-folgendes popupTheme, sonst wäre es
+         im jeweils anderen Modus unlesbar. -->
+    <style name="Widget.SkillToRemember.Toolbar" parent="Widget.MaterialComponents.Toolbar">
+        <item name="android:background">@color/toolbar_bg</item>
+        <item name="materialThemeOverlay">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+        <item name="popupTheme">@style/ThemeOverlay.AppCompat.DayNight</item>
+    </style>
+</resources>

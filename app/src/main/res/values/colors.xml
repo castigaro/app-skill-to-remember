@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tiefes Petrol/Teal. -->
+    <color name="primary">#146356</color>
+    <color name="primary_dark">#0D453C</color>
+    <color name="secondary">#3E9C89</color>
+    <color name="white">#FFFFFF</color>
+    <color name="ic_launcher_background">#0D453C</color>
+    <!-- Feste Toolbar-Farbe (im Dark-Mode überschrieben). -->
+    <color name="toolbar_bg">#146356</color>
+</resources>
