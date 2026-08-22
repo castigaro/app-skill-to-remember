@@ -57,7 +57,9 @@ object SkillStore {
         val existing = loaded.firstOrNull { it.id == BuiltInSkills.HUMANOID_BEHAVIOR.id }
         when {
             existing != null -> existing.body = BuiltInSkills.HUMANOID_BEHAVIOR.body
-            seededVersion == 0 -> loaded.add(BuiltInSkills.HUMANOID_BEHAVIOR)
+            // Kopie statt Singleton: Spätere Änderungen am Store-Eintrag (Schalter,
+            // Name) dürfen das geteilte BuiltInSkills-Objekt nicht mitverändern.
+            seededVersion == 0 -> loaded.add(Skill.fromJson(BuiltInSkills.HUMANOID_BEHAVIOR.toJson()))
             // sonst: vom Nutzer gelöscht — nicht wieder aufdrängen
         }
         p.edit().putBoolean("builtInsSeeded", true).putInt("builtInsVersion", BuiltInSkills.VERSION).apply()
