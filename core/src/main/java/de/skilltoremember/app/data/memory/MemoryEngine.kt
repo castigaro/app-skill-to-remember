@@ -3,6 +3,7 @@ package de.skilltoremember.app.data.memory
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
+import java.util.Locale
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
@@ -155,7 +156,7 @@ object MemoryEngine {
             counters.put("skipped", counters.optInt("skipped", 0) + 1)
             store.saveMeta(meta)
             store.journal("skip", JSONObject().put("t", t).put("s", s))
-            return RememberResult(false, "skipped", null, "below salience threshold %.2f".format(SALIENCE_THRESHOLD))
+            return RememberResult(false, "skipped", null, "below salience threshold %.2f".format(Locale.ROOT, SALIENCE_THRESHOLD))
         }
 
         val entries = store.loadEntries()
@@ -393,7 +394,9 @@ object MemoryEngine {
     // ---- digest / boot ----
 
     private fun renderLine(entry: MemoryEntry, at: Instant): String {
-        val tail = "(%.2f/%d)".format(strength(entry, at), entry.f)
+        // Locale.ROOT: das Python-Original schreibt immer "0.95" — auf einem
+        // deutschen Gerät würde die Default-Locale sonst "0,95" daraus machen.
+        val tail = "(%.2f/%d)".format(Locale.ROOT, strength(entry, at), entry.f)
         return "- [${entry.id}] ${entry.t} :: ${entry.v} $tail"
     }
 

@@ -1,6 +1,7 @@
 package de.skilltoremember.app.data.memory
 
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 
 /**
  * BLAKE2s (RFC 7693), keyless, konfigurierbare Digest-Größe. Selbst
@@ -124,6 +125,8 @@ object Blake2s {
     fun hashHex(text: String, digestSize: Int): String {
         val d = Digest(digestSize)
         d.update(text.toByteArray(StandardCharsets.UTF_8))
-        return d.digest().joinToString("") { "%02x".format(it) }
+        // Locale.ROOT: %x nutzt sonst die Ziffern der Geräte-Sprache — bei
+        // Nicht-ASCII-Ziffernsystemen wären die Content-Hash-IDs kaputt.
+        return d.digest().joinToString("") { "%02x".format(Locale.ROOT, it) }
     }
 }

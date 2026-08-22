@@ -2,12 +2,15 @@ package de.skilltoremember.app.data.memory
 
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.time.Instant
+import java.util.Locale
 
 /**
  * Der erwartete Digest-Text stammt wortwörtlich vom echten `memory.py`
@@ -74,5 +77,21 @@ class DigestRenderTest {
     fun `leerer Speicher zeigt EMPTY CHARACTER`() {
         val boot = MemoryEngine.boot(store)
         assertEquals(true, boot.digest.contains("EMPTY CHARACTER"))
+    }
+
+    @Test
+    fun `Digest nutzt Dezimalpunkte auch auf deutschsprachigen Geraeten`() {
+        // Die CI läuft englisch — dieser Test stellt die Geräte-Sprache nach,
+        // auf der die Stärke sonst als "0,95" statt "0.95" gerendert würde.
+        val previous = Locale.getDefault()
+        Locale.setDefault(Locale.GERMANY)
+        try {
+            MemoryEngine.remember(store, "idt", "self.name", "Works with Torsten", salience = 0.95, confidence = 0.95)
+            val digest = MemoryEngine.boot(store).digest
+            assertTrue(digest.contains("(0.95/0)"))
+            assertFalse(digest.contains(","))
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 }

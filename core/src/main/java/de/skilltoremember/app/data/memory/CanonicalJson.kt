@@ -2,6 +2,7 @@ package de.skilltoremember.app.data.memory
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 
 /**
  * Kanonische JSON-Serialisierung, kompatibel zu Pythons `json.dumps(obj,
@@ -60,7 +61,7 @@ object CanonicalJson {
                 '\r' -> out.append("\\r")
                 '\t' -> out.append("\\t")
                 else -> if (ch.code < 0x20) {
-                    out.append("\\u%04x".format(ch.code))
+                    out.append("\\u%04x".format(Locale.ROOT, ch.code))
                 } else {
                     out.append(ch)
                 }
