@@ -87,6 +87,9 @@
     <string name="location_intro">Gibt der KI ein Werkzeug, um den ungefähren Standort abzufragen — für Fragen wie „Wo bin ich?“, zur Umgebung oder (mit Websuche) zum lokalen Wetter. Der Standort wird nur dann an den KI-Anbieter übertragen, wenn das Modell ihn für die Antwort wirklich abruft.</string>
     <string name="location_enabled">Standortabfrage erlauben</string>
     <string name="location_permission_denied">Ohne Standort-Berechtigung bleibt die Funktion aus.</string>
+    <string name="watch_action_channel">Von der Uhr</string>
+    <string name="watch_action_calendar_title">Termin von der Uhr — tippen zum Eintragen</string>
+    <string name="watch_action_email_title">E-Mail-Entwurf von der Uhr — tippen zum Öffnen</string>
     <string name="auto_listen_enabled">Beim App-Start sofort zuhören</string>
     <string name="auto_listen_hint">Öffnet die App direkt im Sprachdialog des letzten Chats. Praktisch mit einer Hardware-Taste: In den Android-Einstellungen die Funktionstaste (Doppeldruck) mit SkillToRemember belegen — zweimal drücken, sprechen. Gilt nach „Einstellungen an die Uhr senden“ auch auf der Uhr.</string>
 

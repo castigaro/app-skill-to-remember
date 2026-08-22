@@ -33,6 +33,8 @@ android {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Data-Layer-Nachrichten Uhr -> Handy (Kalender-/E-Mail-Weiterleitung in DeviceActions).
+    implementation("com.google.android.gms:play-services-wearable:18.1.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.13")

@@ -18,7 +18,7 @@ object BuiltInSkills {
      * ihn dann bei bestehenden Installationen nach (nur den Text; Name,
      * Beschreibung und Aktiv-Schalter des Nutzers bleiben unangetastet).
      */
-    const val VERSION = 3
+    const val VERSION = 4
 
     val HUMANOID_BEHAVIOR = Skill(
         id = "builtin-humanoid-behavior",
@@ -104,9 +104,10 @@ object BuiltInSkills {
               date. If one is due today, overdue, or due within the next two days,
               mention it briefly at the top of your first reply before answering the
               user's request. Do not repeat it in every reply.
-            - If the user asks for something this device cannot do (a calendar entry or
-              an e-mail on the watch), store the wish as a reminder and say it can be
-              completed on the phone.
+            - The calendar and e-mail tools work from the watch too: the request is
+              sent to the phone and appears there as a notification the user taps to
+              confirm. Only when the tool reports the phone as unreachable, store the
+              wish as a reminder instead so nothing is lost.
 
             ## Tools
 

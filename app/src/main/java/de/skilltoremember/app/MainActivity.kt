@@ -1,7 +1,12 @@
 package de.skilltoremember.app
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import de.skilltoremember.app.update.UpdateChecker
 import kotlinx.coroutines.launch
@@ -22,6 +27,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: ChatAdapter
 
+    /** Ab Android 13 Pflicht für die "Termin von der Uhr"-Benachrichtigungen. */
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -36,6 +45,12 @@ class MainActivity : AppCompatActivity() {
         binding.chatList.adapter = adapter
 
         binding.fabNewChat.setOnClickListener { startNewChat() }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         checkForUpdate()
 
