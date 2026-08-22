@@ -76,7 +76,9 @@
     <string name="import_done">Skill „%1$s“ importiert</string>
     <string name="import_multi_done">%1$d Skill(s) importiert</string>
     <string name="import_none_found">Keine SKILL.md-Dateien gefunden.</string>
-    <string name="skill_built_in_note">Fest eingebauter Skill (★). Name und Beschreibung lassen sich anpassen, gelöscht werden kann er nicht.</string>
+    <string name="skill_built_in_note">Fest eingebauter Skill (★) — das Herzstück der App: Er gibt der KI ihr Gedächtnis. Er ist immer aktiv und lässt sich nicht bearbeiten oder löschen.</string>
+    <string name="skill_built_in_locked">Dieser Skill ist das Herzstück der App und kann nicht gelöscht werden.</string>
+    <string name="view_skill_title">Skill ansehen</string>
     <string name="skill_edit_intro">Name und Beschreibung sieht das Modell immer — daran entscheidet es, ob der Skill zur Anfrage passt. Die Anleitung wird erst geladen, wenn der Skill tatsächlich gebraucht wird.</string>
     <string name="skill_name_hint">Name (kurz, eindeutig)</string>
     <string name="skill_description_hint">Beschreibung — wann soll dieser Skill greifen?</string>

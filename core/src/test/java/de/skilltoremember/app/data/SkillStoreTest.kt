@@ -32,16 +32,30 @@ class SkillStoreTest {
     }
 
     @Test
-    fun `eingebauter Skill wird nach Loeschen nicht erneut geseedet`() {
+    fun `eingebauter Skill laesst sich nicht loeschen`() {
         val builtIn = SkillStore.getAll(context).first { it.builtIn }
         SkillStore.delete(context, builtIn)
 
         SkillStore.resetForTest()
-        assertTrue("darf nach bewusstem Loeschen nicht zurueckkommen", SkillStore.getAll(context).isEmpty())
+        assertTrue(
+            "das Herzstueck der App muss das Loeschen ueberleben",
+            SkillStore.getAll(context).any { it.builtIn },
+        )
     }
 
     @Test
-    fun `Anleitung des eingebauten Skills wird bei App-Update nachgezogen`() {
+    fun `eingebauter Skill kommt zurueck, wenn er in alten Versionen geloescht wurde`() {
+        // Alte App-Versionen liessen das Loeschen zu — nach dem Update ist er wieder da.
+        File(context.filesDir, "skills.json").writeText("[]")
+        context.getSharedPreferences("skills_meta", Context.MODE_PRIVATE)
+            .edit().putBoolean("builtInsSeeded", true).putInt("builtInsVersion", BuiltInSkills.VERSION).apply()
+
+        SkillStore.resetForTest()
+        assertTrue(SkillStore.getAll(context).any { it.builtIn })
+    }
+
+    @Test
+    fun `eingebauter Skill wird bei App-Update komplett zurueckgesetzt`() {
         // Alte Installation simulieren: geseedet ohne Versions-Marke, alter
         // Anleitungstext, Name/Beschreibung/Schalter vom Nutzer angepasst.
         val old = Skill(
@@ -56,9 +70,9 @@ class SkillStoreTest {
         SkillStore.resetForTest()
         val upgraded = SkillStore.get(context, BuiltInSkills.HUMANOID_BEHAVIOR.id)!!
         assertEquals(BuiltInSkills.HUMANOID_BEHAVIOR.body, upgraded.body)
-        assertEquals("mein-gedaechtnis", upgraded.name)
-        assertEquals("eigene Beschreibung", upgraded.description)
-        assertTrue(!upgraded.enabled)
+        assertEquals(BuiltInSkills.HUMANOID_BEHAVIOR.name, upgraded.name)
+        assertEquals(BuiltInSkills.HUMANOID_BEHAVIOR.description, upgraded.description)
+        assertTrue("das Herzstueck ist nach dem Update wieder aktiv", upgraded.enabled)
         assertEquals(1, SkillStore.getAll(context).size)
     }
 
@@ -91,11 +105,16 @@ class SkillStoreTest {
     }
 
     @Test
+    fun `getEnabled enthaelt den eingebauten Skill auch bei abgeschaltetem Schalter`() {
+        // Selbst wenn der Schalter (z. B. aus einer alten Installation) auf aus
+        // steht: Das Herzstueck der App bleibt aktiv.
+        SkillStore.getAll(context).first { it.builtIn }.enabled = false
+        assertTrue(SkillStore.getEnabled(context).any { it.builtIn })
+    }
+
+    @Test
     fun `replaceImported spiegelt die Handy-Skills, laesst eingebaute unangetastet`() {
         SkillStore.add(context, Skill(name = "alter-import", description = "d", body = "b"))
-        val builtIn = SkillStore.getAll(context).first { it.builtIn }
-        builtIn.enabled = false
-        SkillStore.save(context)
 
         SkillStore.replaceImported(
             context,
@@ -109,7 +128,7 @@ class SkillStoreTest {
         val names = SkillStore.getAll(context).map { it.name }
         assertEquals(listOf("einkaufsliste", "humanoid-behavior", "vergissmeinnicht"), names)
         assertTrue("alter Import muss ersetzt sein", !names.contains("alter-import"))
-        assertTrue("eingebauter Skill behaelt seinen Schalter", !SkillStore.getAll(context).first { it.builtIn }.enabled)
+        assertTrue("eingebauter Skill bleibt aktiv", SkillStore.getAll(context).first { it.builtIn }.enabled)
         assertTrue("uebertragener Aktiv-Schalter bleibt erhalten", !SkillStore.getAll(context).first { it.name == "vergissmeinnicht" }.enabled)
     }
 

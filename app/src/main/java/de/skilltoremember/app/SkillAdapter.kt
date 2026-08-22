@@ -1,6 +1,7 @@
 package de.skilltoremember.app
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import de.skilltoremember.app.data.Skill
@@ -40,8 +41,14 @@ class SkillAdapter(
 
             // Listener kurz lösen, sonst feuert er beim programmatischen Setzen erneut.
             binding.skillEnabled.setOnCheckedChangeListener(null)
-            binding.skillEnabled.isChecked = skill.enabled
-            binding.skillEnabled.setOnCheckedChangeListener { _, checked -> onToggle(skill, checked) }
+            if (skill.builtIn) {
+                // Das Herzstück der App ist immer aktiv — kein Schalter.
+                binding.skillEnabled.visibility = View.GONE
+            } else {
+                binding.skillEnabled.visibility = View.VISIBLE
+                binding.skillEnabled.isChecked = skill.enabled
+                binding.skillEnabled.setOnCheckedChangeListener { _, checked -> onToggle(skill, checked) }
+            }
 
             binding.root.setOnClickListener { onClick(skill) }
             binding.root.setOnLongClickListener { onLongClick(skill); true }

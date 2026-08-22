@@ -14,11 +14,12 @@ package de.skilltoremember.app.data
 object BuiltInSkills {
 
     /**
-     * Wird erhöht, wenn sich der Anleitungstext ändert — [SkillStore] zieht
-     * ihn dann bei bestehenden Installationen nach (nur den Text; Name,
-     * Beschreibung und Aktiv-Schalter des Nutzers bleiben unangetastet).
+     * Wird erhöht, wenn sich der Skill ändert — [SkillStore] setzt ihn dann
+     * bei bestehenden Installationen einmalig komplett auf diesen Stand zurück
+     * (Name, Beschreibung, Anleitungstext, aktiviert). Der Skill ist das
+     * Herzstück der App und deshalb nicht bearbeitbar.
      */
-    const val VERSION = 4
+    const val VERSION = 5
 
     val HUMANOID_BEHAVIOR = Skill(
         id = "builtin-humanoid-behavior",

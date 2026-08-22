@@ -6,6 +6,9 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -95,13 +98,21 @@ class SkillsActivity : AppCompatActivity() {
                         return@fold
                     }
                     val installed = SkillStore.getAll(this@SkillsActivity).map { it.name.lowercase() }.toSet()
-                    val labels = entries.map { entry ->
-                        val marker = if (entry.name.lowercase() in installed) " ✓" else ""
-                        "${entry.name}$marker\n${entry.description}"
-                    }.toTypedArray()
+                    // Eigene Zeilen (Name fett, Beschreibung darunter) statt setItems —
+                    // mehrzeilige Texte sähen dort wie eine Textwand aus, nicht wie eine Liste.
+                    val adapter = object : ArrayAdapter<SkillLibrary.Entry>(this@SkillsActivity, 0, entries) {
+                        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                            val row = convertView ?: layoutInflater.inflate(R.layout.row_library_skill, parent, false)
+                            val entry = entries[position]
+                            val marker = if (entry.name.lowercase() in installed) " ✓" else ""
+                            row.findViewById<TextView>(R.id.libraryName).text = "${entry.name}$marker"
+                            row.findViewById<TextView>(R.id.libraryDescription).text = entry.description
+                            return row
+                        }
+                    }
                     AlertDialog.Builder(this@SkillsActivity)
                         .setTitle(R.string.library_pick_title)
-                        .setItems(labels) { _, which -> installFromLibrary(entries[which]) }
+                        .setAdapter(adapter) { _, which -> installFromLibrary(entries[which]) }
                         .setNegativeButton(R.string.cancel, null)
                         .show()
                 },
@@ -160,6 +171,10 @@ class SkillsActivity : AppCompatActivity() {
     }
 
     private fun confirmDelete(skill: Skill) {
+        if (skill.builtIn) {
+            Snackbar.make(binding.root, R.string.skill_built_in_locked, Snackbar.LENGTH_LONG).show()
+            return
+        }
         AlertDialog.Builder(this)
             .setTitle(R.string.delete_skill)
             .setMessage(getString(R.string.delete_skill_message, skill.name))

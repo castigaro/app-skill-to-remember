@@ -41,10 +41,12 @@ object SkillStore {
     }
 
     /**
-     * Installiert die eingebauten Skills beim allerersten Start und zieht bei
-     * App-Updates nur ihren Anleitungstext nach ([BuiltInSkills.VERSION]).
-     * Name, Beschreibung und Aktiv-Schalter des Nutzers bleiben erhalten;
-     * ein bewusst gelöschter eingebauter Skill kommt nicht zurück.
+     * Hält den eingebauten Skill auf dem Stand der App ([BuiltInSkills.VERSION]).
+     * Er ist das Herzstück (ohne ihn gibt es kein Gedächtnis) und deshalb
+     * unantastbar: Fehlt er — auch nach einem Löschen in alten App-Versionen —
+     * kommt er zurück, und bei jedem Versionssprung werden Name, Beschreibung
+     * und Anleitungstext auf den Auslieferungszustand zurückgesetzt. Deaktiviert
+     * wird er nie ausgeliefert und beim Laden wieder eingeschaltet.
      */
     private fun seedBuiltInsOnce(context: Context, loaded: MutableList<Skill>) {
         val p = prefs(context)
@@ -53,14 +55,17 @@ object SkillStore {
             p.getBoolean("builtInsSeeded", false) -> 1 // alte Installation ohne Versions-Marke
             else -> 0
         }
-        if (seededVersion >= BuiltInSkills.VERSION) return
         val existing = loaded.firstOrNull { it.id == BuiltInSkills.HUMANOID_BEHAVIOR.id }
-        when {
-            existing != null -> existing.body = BuiltInSkills.HUMANOID_BEHAVIOR.body
-            // Kopie statt Singleton: Spätere Änderungen am Store-Eintrag (Schalter,
-            // Name) dürfen das geteilte BuiltInSkills-Objekt nicht mitverändern.
-            seededVersion == 0 -> loaded.add(Skill.fromJson(BuiltInSkills.HUMANOID_BEHAVIOR.toJson()))
-            // sonst: vom Nutzer gelöscht — nicht wieder aufdrängen
+        if (existing != null && existing.enabled && seededVersion >= BuiltInSkills.VERSION) return
+        if (existing == null) {
+            // Kopie statt Singleton: Spätere Änderungen am Store-Eintrag dürfen
+            // das geteilte BuiltInSkills-Objekt nicht mitverändern.
+            loaded.add(Skill.fromJson(BuiltInSkills.HUMANOID_BEHAVIOR.toJson()))
+        } else {
+            existing.name = BuiltInSkills.HUMANOID_BEHAVIOR.name
+            existing.description = BuiltInSkills.HUMANOID_BEHAVIOR.description
+            existing.body = BuiltInSkills.HUMANOID_BEHAVIOR.body
+            existing.enabled = true
         }
         p.edit().putBoolean("builtInsSeeded", true).putInt("builtInsVersion", BuiltInSkills.VERSION).apply()
         save(context)
@@ -79,7 +84,9 @@ object SkillStore {
 
     @Synchronized
     fun getEnabled(context: Context): List<Skill> =
-        getAll(context).filter { it.enabled }
+        // Eingebaute Skills sind immer aktiv — das Gedächtnis ist das Herzstück
+        // der App und darf nicht versehentlich abschaltbar sein.
+        getAll(context).filter { it.enabled || it.builtIn }
 
     @Synchronized
     fun get(context: Context, id: String): Skill? =
@@ -93,6 +100,7 @@ object SkillStore {
 
     @Synchronized
     fun delete(context: Context, skill: Skill) {
+        if (skill.builtIn) return // das Herzstück der App ist nicht löschbar
         load(context).removeAll { it.id == skill.id }
         save(context)
     }

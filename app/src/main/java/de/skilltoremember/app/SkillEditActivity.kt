@@ -57,8 +57,14 @@ class SkillEditActivity : AppCompatActivity() {
             binding.inputDescription.setText(existing.description)
             binding.inputBody.setText(existing.body)
             if (existing.builtIn) {
+                // Das Herzstück der App: nur ansehen, nicht verändern.
+                supportActionBar?.title = getString(R.string.view_skill_title)
                 binding.builtInNote.visibility = View.VISIBLE
                 binding.buttonAiDraft.visibility = View.GONE
+                binding.buttonSaveSkill.visibility = View.GONE
+                binding.inputName.isEnabled = false
+                binding.inputDescription.isEnabled = false
+                binding.inputBody.isEnabled = false
             }
         }
 
@@ -67,6 +73,7 @@ class SkillEditActivity : AppCompatActivity() {
     }
 
     private fun save() {
+        if (skill?.builtIn == true) return // nur ansehen — der Knopf ist ohnehin ausgeblendet
         val name = binding.inputName.text?.toString()?.trim().orEmpty()
         val description = binding.inputDescription.text?.toString()?.trim().orEmpty()
         val body = binding.inputBody.text?.toString()?.trim().orEmpty()
