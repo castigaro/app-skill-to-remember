@@ -51,6 +51,8 @@ object ChatApi {
     private const val TOOL_RECALL = "recall"
     private const val TOOL_FORGET = "forget"
     private const val TOOL_GET_LOCATION = "get_location"
+    private const val TOOL_ADD_CALENDAR_EVENT = "add_calendar_event"
+    private const val TOOL_DRAFT_EMAIL = "draft_email"
     private const val MAX_TOOL_ROUNDS = 6
     private const val MEMORY_PULL_INTERVAL_SECONDS = 5 * 60L
 
@@ -192,8 +194,89 @@ object ChatApi {
             TOOL_GET_LOCATION ->
                 if (ProviderSettings.isLocationEnabled(context)) LocationProvider.describe(context)
                 else "Standortabfrage ist in den Einstellungen deaktiviert."
+            TOOL_ADD_CALENDAR_EVENT -> executeAddCalendarEvent(context, input)
+            TOOL_DRAFT_EMAIL -> executeDraftEmail(context, input)
             else -> "Unbekanntes Tool \"$name\"."
         }
+
+    private fun executeAddCalendarEvent(context: Context, input: JSONObject): String {
+        val title = input.optString("title")
+        if (title.isBlank()) return "Titel fehlt."
+        val start = parseLocalDateTimeMillis(input.optString("start"))
+            ?: return "Startzeit fehlt oder ist kein ISO-Datum (erwartet z. B. 2026-09-20T10:00)."
+        val end = input.optString("end").ifBlank { null }?.let { parseLocalDateTimeMillis(it) }
+        return DeviceActions.openCalendarInsert(
+            context, title, start, end,
+            location = input.optString("location").ifBlank { null },
+            notes = input.optString("notes").ifBlank { null },
+        )
+    }
+
+    private fun executeDraftEmail(context: Context, input: JSONObject): String {
+        val subject = input.optString("subject")
+        val body = input.optString("body")
+        if (subject.isBlank() && body.isBlank()) return "Betreff oder Text fehlt."
+        return DeviceActions.openEmailDraft(context, input.optString("to").ifBlank { null }, subject, body)
+    }
+
+    /** Akzeptiert lokales ISO-Datum mit oder ohne Uhrzeit ("2026-09-20T10:00", "2026-09-20"). */
+    internal fun parseLocalDateTimeMillis(text: String): Long? = runCatching {
+        val trimmed = text.trim()
+        val local = runCatching { java.time.LocalDateTime.parse(trimmed) }
+            .getOrElse { java.time.LocalDate.parse(trimmed).atStartOfDay() }
+        local.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }.getOrNull()
+
+    /** Kalender-Termin und E-Mail-Entwurf — nur am Handy; die Uhr speichert solche Wünsche als Erinnerung (siehe Skill). */
+    private fun deviceActionTools(forOpenAi: Boolean): List<JSONObject> {
+        fun schema(properties: JSONObject, required: List<String>): JSONObject = JSONObject().apply {
+            put("type", "object")
+            put("properties", properties)
+            put("required", JSONArray(required))
+        }
+
+        fun tool(name: String, description: String, params: JSONObject): JSONObject =
+            if (forOpenAi) {
+                JSONObject().put("type", "function").put(
+                    "function",
+                    JSONObject().put("name", name).put("description", description).put("parameters", params),
+                )
+            } else {
+                JSONObject().put("name", name).put("description", description).put("input_schema", params)
+            }
+
+        val calendarSchema = schema(
+            JSONObject().apply {
+                put("title", JSONObject().put("type", "string").put("description", "Titel des Termins"))
+                put("start", JSONObject().put("type", "string").put("description", "Beginn, lokales ISO-Format: JJJJ-MM-TTThh:mm (oder nur JJJJ-MM-TT für ganztägig)"))
+                put("end", JSONObject().put("type", "string").put("description", "Ende, gleiches Format, optional"))
+                put("location", JSONObject().put("type", "string").put("description", "Ort, optional"))
+                put("notes", JSONObject().put("type", "string").put("description", "Notiz/Beschreibung, optional"))
+            },
+            listOf("title", "start"),
+        )
+        val emailSchema = schema(
+            JSONObject().apply {
+                put("to", JSONObject().put("type", "string").put("description", "Empfänger-Adresse; weglassen, wenn unbekannt"))
+                put("subject", JSONObject().put("type", "string").put("description", "Betreff"))
+                put("body", JSONObject().put("type", "string").put("description", "Der ausformulierte Text der E-Mail"))
+            },
+            listOf("subject", "body"),
+        )
+
+        return listOf(
+            tool(
+                TOOL_ADD_CALENDAR_EVENT,
+                "Öffnet die Kalender-App mit einem vorausgefüllten Termin — der Nutzer prüft und speichert ihn selbst. Nichts wird automatisch eingetragen.",
+                calendarSchema,
+            ),
+            tool(
+                TOOL_DRAFT_EMAIL,
+                "Öffnet die Standard-Mail-App mit einem fertigen Entwurf — der Nutzer prüft und sendet ihn selbst. Es wird nie automatisch gesendet.",
+                emailSchema,
+            ),
+        )
+    }
 
     /** Standort-Werkzeug — parameterlos; das Modell soll es nur bei Ortsbezug aufrufen. */
     private fun locationTool(forOpenAi: Boolean): JSONObject {
@@ -340,10 +423,19 @@ object ChatApi {
 
     // ---- Anthropic ----
 
-    internal fun anthropicTools(skills: List<Skill>, memoryStore: MemoryStore?, webSearch: Boolean, location: Boolean): JSONArray {
+    internal fun anthropicTools(
+        skills: List<Skill>,
+        memoryStore: MemoryStore?,
+        webSearch: Boolean,
+        location: Boolean,
+        deviceActions: Boolean = false,
+    ): JSONArray {
         val tools = JSONArray()
         if (location) {
             tools.put(locationTool(forOpenAi = false))
+        }
+        if (deviceActions) {
+            deviceActionTools(forOpenAi = false).forEach { tools.put(it) }
         }
         if (webSearch) {
             // Serverseitig: Anthropic führt die Suche selbst aus, die App muss nichts tun.
@@ -397,6 +489,7 @@ object ChatApi {
             skills, memoryStore,
             webSearch = ProviderSettings.isWebSearchEnabled(context),
             location = ProviderSettings.isLocationEnabled(context),
+            deviceActions = DeviceActions.available(context),
         )
 
         for (round in 0..MAX_TOOL_ROUNDS) {
@@ -515,10 +608,13 @@ object ChatApi {
 
     // ---- OpenAI ----
 
-    private fun openAiTools(skills: List<Skill>, memoryStore: MemoryStore?, location: Boolean): JSONArray {
+    private fun openAiTools(skills: List<Skill>, memoryStore: MemoryStore?, location: Boolean, deviceActions: Boolean): JSONArray {
         val tools = JSONArray()
         if (location) {
             tools.put(locationTool(forOpenAi = true))
+        }
+        if (deviceActions) {
+            deviceActionTools(forOpenAi = true).forEach { tools.put(it) }
         }
         if (skills.isNotEmpty()) {
             tools.put(JSONObject().apply {
@@ -563,7 +659,11 @@ object ChatApi {
                 put("content", msg.text)
             })
         }
-        val tools = openAiTools(skills, memoryStore, location = ProviderSettings.isLocationEnabled(context))
+        val tools = openAiTools(
+            skills, memoryStore,
+            location = ProviderSettings.isLocationEnabled(context),
+            deviceActions = DeviceActions.available(context),
+        )
 
         for (round in 0..MAX_TOOL_ROUNDS) {
             val body = JSONObject().apply {

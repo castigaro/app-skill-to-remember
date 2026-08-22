@@ -53,6 +53,27 @@ class ChatApiTest {
     }
 
     @Test
+    fun `Kalender- und Mail-Werkzeug erscheinen nur mit deviceActions`() {
+        val with = ChatApi.anthropicTools(emptyList(), null, webSearch = false, location = false, deviceActions = true)
+        assertEquals(2, with.length())
+        assertEquals("add_calendar_event", with.getJSONObject(0).getString("name"))
+        assertEquals("draft_email", with.getJSONObject(1).getString("name"))
+
+        assertEquals(0, ChatApi.anthropicTools(emptyList(), null, webSearch = false, location = false).length())
+    }
+
+    @Test
+    fun `ISO-Zeiten werden mit und ohne Uhrzeit verstanden`() {
+        val dateOnly = ChatApi.parseLocalDateTimeMillis("2026-09-20")
+        val midnight = ChatApi.parseLocalDateTimeMillis("2026-09-20T00:00")
+        val morning = ChatApi.parseLocalDateTimeMillis(" 2026-09-20T10:00 ")
+        assertEquals(midnight, dateOnly)
+        assertTrue(morning!! > midnight!!)
+        assertEquals(null, ChatApi.parseLocalDateTimeMillis("morgen um zehn"))
+        assertEquals(null, ChatApi.parseLocalDateTimeMillis(""))
+    }
+
+    @Test
     fun `System-Prompt-Zeile nennt Wochentag, Datum, Uhrzeit und Zeitzone`() {
         val line = ChatApi.dateTimeLine(ZonedDateTime.of(2026, 8, 22, 9, 30, 0, 0, ZoneId.of("Europe/Berlin")))
         assertTrue(line.contains("Samstag"))
