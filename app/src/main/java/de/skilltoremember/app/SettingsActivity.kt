@@ -282,28 +282,66 @@ class SettingsActivity : AppCompatActivity() {
         binding.memoryTokenLink.setOnClickListener { openUrl(URL_CREATE_TOKEN) }
         binding.buttonMemoryConnect.setOnClickListener { connectMemory() }
         binding.buttonMemorySync.setOnClickListener { syncMemoryNow() }
+        binding.buttonMemoryLocal.setOnClickListener { confirmLocalMemory() }
 
         refreshMemoryStatus()
     }
 
     private fun refreshMemoryStatus() {
         val store = MemorySettings.store(this)
-        val connected = store.exists()
-        binding.buttonMemorySync.isEnabled = connected
+        val exists = store.exists()
+        val configured = MemorySettings.isConfigured(this)
+        binding.buttonMemorySync.isEnabled = exists && configured
+        binding.buttonMemoryLocal.visibility = if (exists) View.GONE else View.VISIBLE
 
         binding.textMemoryStatus.text = when {
-            !connected -> getString(R.string.memory_status_not_connected)
+            !exists -> getString(R.string.memory_status_not_connected)
+            !configured -> getString(R.string.memory_status_local)
             MemorySettings.getLastSync(this) != null -> getString(R.string.memory_status_synced, MemorySettings.getLastSync(this))
             else -> getString(R.string.memory_status_connected_no_sync)
+        }
+    }
+
+    /** Nur-lokal-Modus: erst die Konsequenzen klarmachen, dann anlegen. */
+    private fun confirmLocalMemory() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.memory_local_confirm_title)
+            .setMessage(R.string.memory_local_confirm_message)
+            .setPositiveButton(R.string.memory_local_confirm_ok) { _, _ -> startLocalMemory() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun startLocalMemory() {
+        setMemoryBusy(true)
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { MemoryEngine.createFresh(MemorySettings.store(this@SettingsActivity), gitUrl = null, branch = "main") }
+            }
+            setMemoryBusy(false)
+            refreshMemoryStatus()
+            result.fold(
+                onSuccess = { Snackbar.make(binding.root, R.string.memory_local_created, Snackbar.LENGTH_SHORT).show() },
+                onFailure = { e ->
+                    Snackbar.make(binding.root, getString(R.string.memory_error, e.message ?: "?"), Snackbar.LENGTH_LONG).show()
+                },
+            )
         }
     }
 
     private fun setMemoryBusy(busy: Boolean) {
         binding.progressMemory.visibility = if (busy) View.VISIBLE else View.GONE
         binding.buttonMemoryConnect.isEnabled = !busy
-        binding.buttonMemorySync.isEnabled = !busy && MemorySettings.store(this).exists()
+        binding.buttonMemoryLocal.isEnabled = !busy
+        binding.buttonMemorySync.isEnabled = !busy && MemorySettings.store(this).exists() && MemorySettings.isConfigured(this)
     }
 
+    /**
+     * Verbindet das Repo in zwei Schritten: Erst nur nachsehen, was dort liegt.
+     * Enthält das Repo ein *anderes* Gedächtnis (fremde `root_id` in der Meta)
+     * als das auf dem Gerät, entscheidet der Nutzer — das Repo hat Vorrang,
+     * aber die lokale Version wird nie ungefragt überschrieben.
+     */
     private fun connectMemory() {
         val owner = binding.inputMemoryOwner.text.toString().trim()
         val repo = binding.inputMemoryRepo.text.toString().trim()
@@ -313,24 +351,109 @@ class SettingsActivity : AppCompatActivity() {
             Snackbar.make(binding.root, R.string.memory_fields_required, Snackbar.LENGTH_LONG).show()
             return
         }
+        // Bisherige Verbindung merken: Bei Abbruch oder Fehler wird sie
+        // wiederhergestellt, damit nicht halb umgestellte Einstellungen den
+        // automatischen Abgleich gegen das falsche Repo laufen lassen.
+        val prevOwner = MemorySettings.getOwner(this)
+        val prevRepo = MemorySettings.getRepo(this)
+        val prevBranch = MemorySettings.getBranch(this)
+        val prevToken = MemorySettings.getToken(this)
         MemorySettings.save(this, owner, repo, branch, token)
 
+        setMemoryBusy(true)
+        lifecycleScope.launch {
+            val probed = withContext(Dispatchers.IO) {
+                runCatching {
+                    val store = MemorySettings.store(this@SettingsActivity)
+                    val config = MemorySettings.config(this@SettingsActivity)
+                    val remoteMeta = GitHubMemorySync.readRemoteMeta(config)
+                    val localRootId = if (store.exists()) store.meta().optString("root_id").ifBlank { null } else null
+                    Pair(remoteMeta, localRootId)
+                }
+            }
+            probed.fold(
+                onSuccess = { (remoteMeta, localRootId) ->
+                    val remoteRootId = remoteMeta?.optString("root_id")?.ifBlank { null }
+                    if (remoteMeta != null && localRootId != null && remoteRootId != localRootId) {
+                        setMemoryBusy(false)
+                        AlertDialog.Builder(this@SettingsActivity)
+                            .setTitle(R.string.memory_conflict_title)
+                            .setMessage(R.string.memory_conflict_message)
+                            .setPositiveButton(R.string.memory_conflict_take_repo) { _, _ ->
+                                finishConnect(remoteMeta, replaceLocal = true)
+                            }
+                            .setNegativeButton(R.string.cancel) { _, _ ->
+                                revertMemorySettings(prevOwner, prevRepo, prevBranch, prevToken)
+                            }
+                            .setOnCancelListener {
+                                revertMemorySettings(prevOwner, prevRepo, prevBranch, prevToken)
+                            }
+                            .show()
+                    } else {
+                        finishConnect(remoteMeta, replaceLocal = false)
+                    }
+                },
+                onFailure = { e ->
+                    // Repo nicht erreichbar/prüfbar: Einstellungen zurückdrehen,
+                    // die Eingabefelder behalten die Eingabe zum Korrigieren.
+                    MemorySettings.save(this@SettingsActivity, prevOwner, prevRepo, prevBranch, prevToken)
+                    setMemoryBusy(false)
+                    refreshMemoryStatus()
+                    Snackbar.make(binding.root, getString(R.string.memory_error, e.message ?: "?"), Snackbar.LENGTH_LONG).show()
+                },
+            )
+        }
+    }
+
+    /** Nutzer hat abgebrochen: alte Verbindung und Felder wiederherstellen, nichts wurde verändert. */
+    private fun revertMemorySettings(owner: String, repo: String, branch: String, token: String) {
+        MemorySettings.save(this, owner, repo, branch, token)
+        binding.inputMemoryOwner.setText(owner)
+        binding.inputMemoryRepo.setText(repo)
+        binding.inputMemoryBranch.setText(branch)
+        binding.inputMemoryToken.setText(token)
+        setMemoryBusy(false)
+        refreshMemoryStatus()
+        Snackbar.make(binding.root, R.string.memory_connect_cancelled, Snackbar.LENGTH_SHORT).show()
+    }
+
+    /** Zweiter Schritt nach der Prüfung (bzw. nach der Konflikt-Entscheidung). */
+    private fun finishConnect(remoteMeta: org.json.JSONObject?, replaceLocal: Boolean) {
         setMemoryBusy(true)
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     val store = MemorySettings.store(this@SettingsActivity)
                     val config = MemorySettings.config(this@SettingsActivity)
-                    val remoteMeta = GitHubMemorySync.readRemoteMeta(config)
-                    if (remoteMeta != null) {
-                        store.saveMeta(remoteMeta)
-                        GitHubMemorySync.pull(store, config)
-                        MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
-                        "restored"
-                    } else {
-                        MemoryEngine.createFresh(store, config.url, config.branch)
-                        GitHubMemorySync.push(store, config, "memory: init")
-                        "ready"
+                    val hadLocal = store.exists()
+                    when {
+                        remoteMeta != null -> {
+                            // Entschieden: Das Repo gewinnt — die lokale Version weicht komplett.
+                            if (replaceLocal) MemorySettings.storeRoot(this@SettingsActivity).deleteRecursively()
+                            // Remote-Stand holen; der Pull vereinigt ihn mit eventuell
+                            // vorhandenen lokalen Einträgen (gleiches Gedächtnis, z. B.
+                            // Nur-lokal-Phase) — die werden danach sofort mit hochgeladen.
+                            store.saveMeta(remoteMeta)
+                            GitHubMemorySync.pull(store, config)
+                            MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
+                            if (hadLocal && !replaceLocal) GitHubMemorySync.push(store, config, "memory: ${MemoryClock.isoNow()}")
+                            if (replaceLocal) "replaced" else "restored"
+                        }
+                        hadLocal -> {
+                            // Leeres Repo + lokales Gedächtnis: übernehmen statt überschreiben —
+                            // nur die Repo-Angaben in die Meta schreiben und alles hochladen.
+                            val meta = store.meta()
+                            meta.put("git", config.url)
+                            meta.put("branch", config.branch)
+                            store.saveMeta(meta)
+                            GitHubMemorySync.push(store, config, "memory: init")
+                            "migrated"
+                        }
+                        else -> {
+                            MemoryEngine.createFresh(store, config.url, config.branch)
+                            GitHubMemorySync.push(store, config, "memory: init")
+                            "ready"
+                        }
                     }
                 }
             }
@@ -339,7 +462,12 @@ class SettingsActivity : AppCompatActivity() {
                 onSuccess = { outcome ->
                     MemorySettings.setLastSync(this@SettingsActivity, MemoryClock.isoNow())
                     refreshMemoryStatus()
-                    val message = if (outcome == "restored") R.string.memory_connect_restored else R.string.memory_connect_ready
+                    val message = when (outcome) {
+                        "replaced" -> R.string.memory_connect_replaced
+                        "restored" -> R.string.memory_connect_restored
+                        "migrated" -> R.string.memory_connect_migrated
+                        else -> R.string.memory_connect_ready
+                    }
                     Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT).show()
                 },
                 onFailure = { e ->

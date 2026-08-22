@@ -102,7 +102,9 @@ object ChatApi {
 
     private fun memoryStoreIfActive(context: Context, skills: List<Skill>): MemoryStore? {
         val skillActive = skills.any { it.id == BuiltInSkills.HUMANOID_BEHAVIOR.id }
-        if (!skillActive || !MemorySettings.isConfigured(context)) return null
+        if (!skillActive) return null
+        // Aktiv, sobald der lokale Speicher existiert — mit verbundenem Repo
+        // (synchronisiert) oder ohne (Nur-lokal-Modus, siehe Einstellungen).
         val store = MemorySettings.store(context)
         if (!store.exists()) return null
         return store
@@ -183,6 +185,7 @@ object ChatApi {
      * (offline), antwortet die App mit dem lokalen Stand.
      */
     private fun pullMemoryIfStale(context: Context, store: MemoryStore) {
+        if (!MemorySettings.isConfigured(context)) return // Nur-lokal-Modus: nichts zu holen
         if (!isMemoryPullDue(MemorySettings.getLastSync(context), MemoryClock.now())) return
         runCatching {
             GitHubMemorySync.pull(store, MemorySettings.config(context))
@@ -410,7 +413,13 @@ object ChatApi {
     }
 
     /** Pusht sofort nach einem Schreibzugriff ("on the fly", wie gefordert). Netzwerkfehler brechen die Antwort nicht ab. */
-    private fun trySyncAfterWrite(context: Context, store: MemoryStore): Boolean = runCatching {
+    private fun trySyncAfterWrite(context: Context, store: MemoryStore): Boolean {
+        // Nur-lokal-Modus ist eine bewusste Wahl — kein "nicht synchronisiert"-Hinweis nötig.
+        if (!MemorySettings.isConfigured(context)) return true
+        return syncAfterWrite(context, store)
+    }
+
+    private fun syncAfterWrite(context: Context, store: MemoryStore): Boolean = runCatching {
         val config = MemorySettings.config(context)
         GitHubMemorySync.pull(store, config)
         MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())

@@ -424,6 +424,14 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/memory_sync_now" />
 
+            <Button
+                android:id="@+id/buttonMemoryLocal"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/memory_local_start" />
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

@@ -48,6 +48,22 @@
     <string name="skill_export_zip">Als ZIP exportieren</string>
     <string name="skill_export_done">ZIP gespeichert.</string>
     <string name="skill_export_failed">Export fehlgeschlagen: %1$s</string>
+
+    <!-- Gedächtnis: Nur-lokal-Modus -->
+    <string name="memory_local_start">Ohne GitHub nutzen (nur lokal)</string>
+    <string name="memory_local_confirm_title">Gedächtnis nur lokal nutzen?</string>
+    <string name="memory_local_confirm_message">Das Gedächtnis liegt dann ausschließlich auf diesem Handy. Das heißt konkret:\n\n• Kein Abgleich mit der Uhr — sie bleibt ohne Gedächtnis.\n• Kein Backup: Wird die App gelöscht oder das Handy gewechselt, sind alle Erinnerungen unwiederbringlich weg.\n\nDu kannst später jederzeit ein GitHub-Repo verbinden — deine lokalen Erinnerungen werden dabei vollständig übernommen und hochgeladen.</string>
+    <string name="memory_local_confirm_ok">Lokal starten</string>
+    <string name="memory_local_created">Lokales Gedächtnis angelegt — die KI kann sich jetzt Dinge merken.</string>
+    <string name="memory_status_local">Lokales Gedächtnis aktiv — ohne Uhr-Abgleich und ohne Backup. Ein GitHub-Repo lässt sich oben jederzeit nachrüsten; die Erinnerungen werden dabei übernommen.</string>
+    <string name="memory_connect_migrated">Repo verbunden — dein lokales Gedächtnis wurde übernommen und hochgeladen.</string>
+
+    <!-- Gedächtnis: Konflikt zwischen Repo und Gerät (unterschiedliche root_id) -->
+    <string name="memory_conflict_title">Anderes Gedächtnis im Repo</string>
+    <string name="memory_conflict_message">Dieses Repo enthält ein anderes Gedächtnis als das, das gerade auf diesem Gerät verwendet wird.\n\nDas Repo hat Vorrang: „Repo übernehmen“ ersetzt das Gedächtnis auf dem Gerät vollständig durch den Repo-Stand — die bisherige Version auf dem Gerät geht dabei unwiederbringlich verloren.\n\nMit „Abbrechen“ bleibt alles wie es ist.</string>
+    <string name="memory_conflict_take_repo">Repo übernehmen</string>
+    <string name="memory_connect_replaced">Gedächtnis aus dem Repo übernommen — die bisherige Version auf dem Gerät wurde ersetzt.</string>
+    <string name="memory_connect_cancelled">Abgebrochen — es wurde nichts verändert.</string>
     <string name="untitled_skill">Neuer Skill</string>
     <string name="new_skill_title">Neuer Skill</string>
     <string name="edit_skill_title">Skill bearbeiten</string>
