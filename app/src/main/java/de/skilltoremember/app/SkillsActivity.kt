@@ -12,17 +12,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import de.skilltoremember.app.data.Skill
+import de.skilltoremember.app.data.SkillLibrary
 import de.skilltoremember.app.data.SkillMarkdown
 import de.skilltoremember.app.data.SkillStore
+import de.skilltoremember.app.data.SkillZip
 import de.skilltoremember.app.databinding.ActivitySkillsBinding
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.io.InputStream
-import java.util.zip.ZipInputStream
 
 /**
  * Verwaltung der Skills: anlegen, bearbeiten, aktivieren/deaktivieren,
@@ -61,7 +60,86 @@ class SkillsActivity : AppCompatActivity() {
         binding.skillList.layoutManager = LinearLayoutManager(this)
         binding.skillList.adapter = adapter
 
-        binding.fabNewSkill.setOnClickListener { openEdit(null) }
+        binding.fabNewSkill.setOnClickListener { showAddChoices() }
+    }
+
+    // ---- "+"-Auswahl: Bibliothek, ZIP, eigener Entwurf ----
+
+    private fun showAddChoices() {
+        val options = arrayOf(
+            getString(R.string.add_from_library),
+            getString(R.string.add_from_zip),
+            getString(R.string.add_own_skill),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.add_skill_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showLibraryPicker()
+                    1 -> importZip.launch(arrayOf("*/*"))
+                    else -> openEdit(null)
+                }
+            }
+            .show()
+    }
+
+    /** Katalog laden und einen Skill direkt aus dem Release installieren — ohne Browser-Umweg. */
+    private fun showLibraryPicker() {
+        Snackbar.make(binding.root, R.string.library_loading, Snackbar.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            val result = runCatching { SkillLibrary.fetchIndex() }
+            result.fold(
+                onSuccess = { entries ->
+                    if (entries.isEmpty()) {
+                        Snackbar.make(binding.root, R.string.import_none_found, Snackbar.LENGTH_LONG).show()
+                        return@fold
+                    }
+                    val installed = SkillStore.getAll(this@SkillsActivity).map { it.name.lowercase() }.toSet()
+                    val labels = entries.map { entry ->
+                        val marker = if (entry.name.lowercase() in installed) " ✓" else ""
+                        "${entry.name}$marker\n${entry.description}"
+                    }.toTypedArray()
+                    AlertDialog.Builder(this@SkillsActivity)
+                        .setTitle(R.string.library_pick_title)
+                        .setItems(labels) { _, which -> installFromLibrary(entries[which]) }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                },
+                onFailure = {
+                    Snackbar.make(binding.root, R.string.library_unreachable, Snackbar.LENGTH_LONG).show()
+                },
+            )
+        }
+    }
+
+    private fun installFromLibrary(entry: SkillLibrary.Entry) {
+        lifecycleScope.launch {
+            val result = runCatching { SkillLibrary.fetchSkills(entry.zipUrl, getString(R.string.untitled_skill)) }
+            result.fold(
+                onSuccess = { skills ->
+                    if (skills.isEmpty()) {
+                        Snackbar.make(binding.root, R.string.import_none_found, Snackbar.LENGTH_LONG).show()
+                        return@fold
+                    }
+                    skills.forEach { installOrUpdate(it) }
+                    refresh()
+                    Snackbar.make(binding.root, getString(R.string.import_done, entry.name), Snackbar.LENGTH_SHORT).show()
+                },
+                onFailure = { e -> showImportError(e) },
+            )
+        }
+    }
+
+    /** Gleichnamiger Bibliotheks-Skill wird aktualisiert statt dupliziert. */
+    private fun installOrUpdate(skill: Skill) {
+        val existing = SkillStore.getAll(this).firstOrNull { !it.builtIn && it.name.equals(skill.name, ignoreCase = true) }
+        if (existing != null) {
+            existing.description = skill.description
+            existing.body = skill.body
+            SkillStore.save(this)
+        } else {
+            SkillStore.add(this, skill)
+        }
     }
 
     override fun onResume() {
@@ -99,7 +177,7 @@ class SkillsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val text = contentResolver.openInputStream(uri)?.use { readCapped(it) }
+                    val text = contentResolver.openInputStream(uri)?.use { SkillZip.readCapped(it) }
                         ?: throw IOException("Stream ist null")
                     val fallbackName = queryDisplayName(uri)?.removeSuffix(".md") ?: getString(R.string.untitled_skill)
                     SkillMarkdown.parse(text, fallbackName)
@@ -128,27 +206,8 @@ class SkillsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val found = mutableListOf<Skill>()
                     val stream = contentResolver.openInputStream(uri) ?: throw IOException("Stream ist null")
-                    stream.use { input ->
-                        ZipInputStream(input).use { zip ->
-                            var entry = zip.nextEntry
-                            while (entry != null) {
-                                if (!entry.isDirectory && entry.name.substringAfterLast('/').equals("SKILL.md", ignoreCase = true)) {
-                                    // Übergroße Einträge (Zip-Bomb, versehentlich gepackte
-                                    // Binärdatei) still überspringen statt sie in den Speicher zu lesen.
-                                    val text = runCatching { readCapped(zip) }.getOrNull()
-                                    if (text != null) {
-                                        val fallback = SkillMarkdown.fallbackNameFromPath(entry.name) ?: getString(R.string.untitled_skill)
-                                        found.add(SkillMarkdown.parse(text, fallback))
-                                    }
-                                }
-                                zip.closeEntry()
-                                entry = zip.nextEntry
-                            }
-                        }
-                    }
-                    found
+                    stream.use { SkillZip.parse(it, getString(R.string.untitled_skill)) }
                 }
             }
             result.fold(
@@ -164,19 +223,6 @@ class SkillsActivity : AppCompatActivity() {
                 onFailure = { e -> showImportError(e) },
             )
         }
-    }
-
-    /** Liest höchstens [MAX_SKILL_MD_BYTES]; mehr ist keine SKILL.md. Schließt den Stream nicht. */
-    private fun readCapped(input: InputStream): String {
-        val out = ByteArrayOutputStream()
-        val buf = ByteArray(8192)
-        while (true) {
-            val n = input.read(buf)
-            if (n < 0) break
-            if (out.size() + n > MAX_SKILL_MD_BYTES) throw IOException(getString(R.string.import_too_large))
-            out.write(buf, 0, n)
-        }
-        return out.toString("UTF-8")
     }
 
     private fun showImportError(e: Throwable) {
@@ -213,7 +259,6 @@ class SkillsActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val MAX_SKILL_MD_BYTES = 2 * 1024 * 1024
         private const val SKILL_LIBRARY_URL = "https://appsonar.de/apps/skilltoremember.html#skill-bibliothek"
     }
 }

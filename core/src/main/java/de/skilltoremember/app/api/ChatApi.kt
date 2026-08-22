@@ -5,6 +5,7 @@ import de.skilltoremember.app.data.BuiltInSkills
 import de.skilltoremember.app.data.Chat
 import de.skilltoremember.app.data.Message
 import de.skilltoremember.app.data.Skill
+import de.skilltoremember.app.data.SkillMarkdown
 import de.skilltoremember.app.data.SkillStore
 import de.skilltoremember.app.data.memory.GitHubMemorySync
 import de.skilltoremember.app.data.memory.MemoryClock
@@ -113,6 +114,61 @@ object ChatApi {
         drei gesprochene Sätze, keine Aufzählungen, kein Markdown, keine
         Codeblöcke. Nenne erst dann mehr Details, wenn der Nutzer nachfragt.
     """.trimIndent()
+
+    // ---- KI-Skill-Autor: aus einer Idee eine saubere SKILL.md machen ----
+
+    private val SKILL_AUTHOR_PROMPT = """
+        Du bist Autor von SKILL.md-Dateien für die App SkillToRemember (Format des
+        Agent-Skills-Standards). Der Nutzer beschreibt eine Idee; du antwortest
+        AUSSCHLIESSLICH mit dem Inhalt der fertigen SKILL.md — kein Text davor oder
+        danach, keine Code-Zäune.
+
+        Aufbau: YAML-Frontmatter mit genau zwei einzeiligen Feldern — `name`
+        (kurz, kleingeschrieben, Bindestriche statt Leerzeichen) und `description`
+        (ein Satz: wann der Skill greifen soll, mit zwei, drei typischen
+        Beispiel-Formulierungen des Nutzers in Anführungszeichen). Danach die
+        Anleitung in klarem, knappem Markdown mit wenigen Abschnitten.
+
+        Soll sich der Skill Dinge dauerhaft merken, nutze die vorhandenen
+        Gedächtnis-Werkzeuge remember/recall/forget: Lege eine feste Topic-Struktur
+        fest (Punktpfade wie `list.<thema>` oder `date.<anlass>.<person>`),
+        beschreibe Speicher- und Abfrage-Verhalten konkret, und erlaube `forget`
+        nur auf ausdrücklichen Nutzerwunsch. Schreibe die Anleitung auf Deutsch.
+    """.trimIndent()
+
+    /**
+     * Erzeugt aus einer Nutzer-Idee einen fertigen Skill. Läuft ohne Werkzeuge und
+     * ohne Gedächtnis-Kontext — eine reine Schreibaufgabe. Das Modell wird dafür
+     * bei Bedarf angehoben (siehe [skillAuthorModel]): Ein Skill wird einmal
+     * geschrieben und hundertfach benutzt, hier zählt Qualität vor Preis.
+     */
+    suspend fun generateSkill(context: Context, idea: String): Skill = withContext(Dispatchers.IO) {
+        val config = ProviderSettings.activeConfig(context)
+            ?: throw ApiException("Kein aktiver API-Key — in den Einstellungen hinterlegen oder aktivieren.")
+        val model = skillAuthorModel(config.provider, config.model)
+        val history = listOf(Message(Message.ROLE_USER, idea))
+        val text = if (config.provider == ProviderSettings.PROVIDER_OPENAI) {
+            requestOpenAi(context, config.apiKey, model, SKILL_AUTHOR_PROMPT, history, emptyList(), null, withTools = false)
+        } else {
+            requestAnthropic(context, config.apiKey, model, SKILL_AUTHOR_PROMPT, history, emptyList(), null, withTools = false)
+        }
+        SkillMarkdown.parse(stripCodeFence(text), fallbackName = "neuer-skill")
+    }
+
+    /** Kleine Modelle liefern gültiges Format, aber flachere Anleitungen — fürs einmalige Schreiben lohnt die nächste Stufe. */
+    internal fun skillAuthorModel(provider: String, model: String): String = when {
+        provider == ProviderSettings.PROVIDER_OPENAI && model.contains("mini", ignoreCase = true) -> "gpt-4o"
+        provider != ProviderSettings.PROVIDER_OPENAI && model.contains("haiku", ignoreCase = true) -> "claude-sonnet-5"
+        else -> model
+    }
+
+    /** Modelle packen Markdown gern in ```-Zäune, obwohl man sie darum bittet, es zu lassen. */
+    internal fun stripCodeFence(text: String): String {
+        val trimmed = text.trim()
+        if (!trimmed.startsWith("```")) return trimmed
+        val withoutFirstLine = trimmed.substringAfter('\n', missingDelimiterValue = "")
+        return withoutFirstLine.substringBeforeLast("```").trim()
+    }
 
     /** Abgleich fällig, wenn der letzte Sync fehlt, unlesbar oder älter als das Intervall ist. */
     internal fun isMemoryPullDue(lastSyncIso: String?, now: Instant): Boolean {
@@ -477,6 +533,7 @@ object ChatApi {
         history: List<Message>,
         skills: List<Skill>,
         memoryStore: MemoryStore?,
+        withTools: Boolean = true,
     ): String {
         val messages = JSONArray()
         history.forEach { msg ->
@@ -485,12 +542,16 @@ object ChatApi {
                 put("content", msg.text)
             })
         }
-        val tools = anthropicTools(
-            skills, memoryStore,
-            webSearch = ProviderSettings.isWebSearchEnabled(context),
-            location = ProviderSettings.isLocationEnabled(context),
-            deviceActions = DeviceActions.available(context),
-        )
+        val tools = if (withTools) {
+            anthropicTools(
+                skills, memoryStore,
+                webSearch = ProviderSettings.isWebSearchEnabled(context),
+                location = ProviderSettings.isLocationEnabled(context),
+                deviceActions = DeviceActions.available(context),
+            )
+        } else {
+            JSONArray()
+        }
 
         for (round in 0..MAX_TOOL_ROUNDS) {
             val body = JSONObject().apply {
@@ -647,6 +708,7 @@ object ChatApi {
         history: List<Message>,
         skills: List<Skill>,
         memoryStore: MemoryStore?,
+        withTools: Boolean = true,
     ): String {
         val messages = JSONArray()
         messages.put(JSONObject().apply {
@@ -659,11 +721,15 @@ object ChatApi {
                 put("content", msg.text)
             })
         }
-        val tools = openAiTools(
-            skills, memoryStore,
-            location = ProviderSettings.isLocationEnabled(context),
-            deviceActions = DeviceActions.available(context),
-        )
+        val tools = if (withTools) {
+            openAiTools(
+                skills, memoryStore,
+                location = ProviderSettings.isLocationEnabled(context),
+                deviceActions = DeviceActions.available(context),
+            )
+        } else {
+            JSONArray()
+        }
 
         for (round in 0..MAX_TOOL_ROUNDS) {
             val body = JSONObject().apply {

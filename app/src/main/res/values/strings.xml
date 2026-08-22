@@ -31,6 +31,23 @@
     <string name="title_skills">Skills</string>
     <string name="empty_skills">Noch keine Skills.\n\nTippe auf +, um einen anzulegen, importiere über das Menü — oder hol dir fertige Skills aus der Skill-Bibliothek (ebenfalls im Menü).</string>
     <string name="skill_library">Skill-Bibliothek öffnen</string>
+    <string name="add_skill_title">Skill hinzufügen</string>
+    <string name="add_from_library">Aus der Bibliothek installieren</string>
+    <string name="add_from_zip">Heruntergeladene ZIP importieren</string>
+    <string name="add_own_skill">Eigenen Skill entwerfen</string>
+    <string name="library_loading">Bibliothek wird geladen …</string>
+    <string name="library_unreachable">Bibliothek nicht erreichbar — bist du online?</string>
+    <string name="library_pick_title">Skill auswählen (✓ = installiert)</string>
+    <string name="skill_ai_draft">✨ Von der KI entwerfen lassen</string>
+    <string name="skill_ai_intro">Beschreibe formlos, was der Skill können soll — die KI schreibt daraus eine saubere Anleitung. Die Felder unten werden überschrieben; du prüfst, passt an und speicherst.</string>
+    <string name="skill_ai_idea_hint">z. B. „Ein Skill, der sich meine Tankstopps mit Kilometerstand merkt und den Verbrauch ausrechnet“</string>
+    <string name="skill_ai_generate">Entwerfen</string>
+    <string name="skill_ai_working">Die KI entwirft den Skill …</string>
+    <string name="skill_ai_done">Entwurf übernommen — prüfen, anpassen, speichern.</string>
+    <string name="skill_ai_failed">Entwurf fehlgeschlagen: %1$s</string>
+    <string name="skill_export_zip">Als ZIP exportieren</string>
+    <string name="skill_export_done">ZIP gespeichert.</string>
+    <string name="skill_export_failed">Export fehlgeschlagen: %1$s</string>
     <string name="untitled_skill">Neuer Skill</string>
     <string name="new_skill_title">Neuer Skill</string>
     <string name="edit_skill_title">Skill bearbeiten</string>

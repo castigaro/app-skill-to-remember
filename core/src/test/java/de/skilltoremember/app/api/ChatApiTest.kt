@@ -74,6 +74,22 @@ class ChatApiTest {
     }
 
     @Test
+    fun `Skill-Autor hebt kleine Modelle an, laesst grosse in Ruhe`() {
+        assertEquals("claude-sonnet-5", ChatApi.skillAuthorModel("anthropic", "claude-haiku-4-5"))
+        assertEquals("claude-sonnet-5", ChatApi.skillAuthorModel("anthropic", "claude-sonnet-5"))
+        assertEquals("claude-opus-4-8", ChatApi.skillAuthorModel("anthropic", "claude-opus-4-8"))
+        assertEquals("gpt-4o", ChatApi.skillAuthorModel("openai", "gpt-4o-mini"))
+        assertEquals("gpt-4o", ChatApi.skillAuthorModel("openai", "gpt-4o"))
+    }
+
+    @Test
+    fun `Code-Zaeune um den Skill-Entwurf werden entfernt`() {
+        assertEquals("---\nname: test\n---\nBody", ChatApi.stripCodeFence("---\nname: test\n---\nBody"))
+        assertEquals("---\nname: test\n---\nBody", ChatApi.stripCodeFence("```markdown\n---\nname: test\n---\nBody\n```"))
+        assertEquals("---\nname: test\n---\nBody", ChatApi.stripCodeFence("```\n---\nname: test\n---\nBody\n```"))
+    }
+
+    @Test
     fun `System-Prompt-Zeile nennt Wochentag, Datum, Uhrzeit und Zeitzone`() {
         val line = ChatApi.dateTimeLine(ZonedDateTime.of(2026, 8, 22, 9, 30, 0, 0, ZoneId.of("Europe/Berlin")))
         assertTrue(line.contains("Samstag"))
