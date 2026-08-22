@@ -94,4 +94,18 @@ object SkillStore {
         load(context).removeAll { it.id == skill.id }
         save(context)
     }
+
+    /**
+     * Ersetzt alle importierten (nicht eingebauten) Skills durch [imported] —
+     * für den Abgleich Handy -> Uhr: Die Uhr spiegelt die Skills des Handys.
+     * Eingebaute Skills verwaltet jedes Gerät selbst (Versions-Migration),
+     * die bleiben unangetastet.
+     */
+    @Synchronized
+    fun replaceImported(context: Context, imported: List<Skill>) {
+        val loaded = load(context)
+        loaded.removeAll { !it.builtIn }
+        imported.filterNot { it.builtIn }.forEach { loaded.add(it) }
+        save(context)
+    }
 }

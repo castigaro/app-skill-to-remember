@@ -91,6 +91,29 @@ class SkillStoreTest {
     }
 
     @Test
+    fun `replaceImported spiegelt die Handy-Skills, laesst eingebaute unangetastet`() {
+        SkillStore.add(context, Skill(name = "alter-import", description = "d", body = "b"))
+        val builtIn = SkillStore.getAll(context).first { it.builtIn }
+        builtIn.enabled = false
+        SkillStore.save(context)
+
+        SkillStore.replaceImported(
+            context,
+            listOf(
+                Skill(name = "einkaufsliste", description = "d", body = "b"),
+                Skill(name = "vergissmeinnicht", description = "d", body = "b", enabled = false),
+            ),
+        )
+
+        SkillStore.resetForTest()
+        val names = SkillStore.getAll(context).map { it.name }
+        assertEquals(listOf("einkaufsliste", "humanoid-behavior", "vergissmeinnicht"), names)
+        assertTrue("alter Import muss ersetzt sein", !names.contains("alter-import"))
+        assertTrue("eingebauter Skill behaelt seinen Schalter", !SkillStore.getAll(context).first { it.builtIn }.enabled)
+        assertTrue("uebertragener Aktiv-Schalter bleibt erhalten", !SkillStore.getAll(context).first { it.name == "vergissmeinnicht" }.enabled)
+    }
+
+    @Test
     fun `delete entfernt einen selbst angelegten Skill dauerhaft`() {
         val skill = Skill(name = "weg damit", description = "d", body = "b")
         SkillStore.add(context, skill)

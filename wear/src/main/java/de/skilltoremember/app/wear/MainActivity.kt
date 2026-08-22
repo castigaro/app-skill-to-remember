@@ -25,6 +25,8 @@ import de.skilltoremember.app.api.ProviderSettings
 import de.skilltoremember.app.data.Chat
 import de.skilltoremember.app.data.ChatStore
 import de.skilltoremember.app.data.Message
+import de.skilltoremember.app.data.Skill
+import de.skilltoremember.app.data.SkillStore
 import de.skilltoremember.app.data.memory.GitHubMemorySync
 import de.skilltoremember.app.data.memory.MemoryClock
 import de.skilltoremember.app.data.memory.MemoryEngine
@@ -34,6 +36,7 @@ import de.skilltoremember.app.wear.databinding.ActivityWearBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import java.util.Locale
 
 /**
@@ -198,6 +201,15 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
         VoiceSettings.setRate(this, map.getFloat("rate", VoiceSettings.DEFAULT_RATE))
         VoiceSettings.setPitch(this, map.getFloat("pitch", VoiceSettings.DEFAULT_PITCH))
         VoiceSettings.setAutoListenEnabled(this, map.getBoolean("autoListen", false))
+        // Importierte Skills des Handys spiegeln; ohne "skills"-Feld (älteres
+        // Handy) bleibt der Bestand der Uhr unverändert.
+        map.getString("skills")?.let { json ->
+            runCatching {
+                val arr = JSONArray(json)
+                val imported = (0 until arr.length()).map { Skill.fromJson(arr.getJSONObject(it)) }
+                SkillStore.replaceImported(this, imported)
+            }
+        }
         ensureLocationPermission()
         restoreMemoryIfNeeded()
     }

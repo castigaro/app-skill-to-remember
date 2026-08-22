@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import de.skilltoremember.app.api.ModelPricing
 import de.skilltoremember.app.api.ProviderSettings
+import de.skilltoremember.app.data.SkillStore
 import de.skilltoremember.app.data.memory.GitHubMemorySync
 import de.skilltoremember.app.data.memory.MemoryClock
 import de.skilltoremember.app.data.memory.MemoryEngine
@@ -31,6 +32,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import java.util.Locale
 
 /** KI-Provider-Key und die Verbindung zum Gedächtnis-Repo (GitHub). */
@@ -384,7 +386,16 @@ class SettingsActivity : AppCompatActivity() {
     // ======================================================================
 
     private fun sendConfigToWatch() {
+        // Importierte Skills spiegeln (eingebaute verwaltet die Uhr selbst).
+        // Data Items sind auf ~100 KB begrenzt — passt die Sammlung nicht,
+        // wird der Rest trotzdem gesendet und der Nutzer informiert.
+        val skillsJson = JSONArray().also { arr ->
+            SkillStore.getAll(this).filterNot { it.builtIn }.forEach { arr.put(it.toJson()) }
+        }.toString()
+        val skillsFit = skillsJson.toByteArray(Charsets.UTF_8).size <= MAX_SKILLS_SYNC_BYTES
+
         val request = PutDataMapRequest.create("/skilltoremember/config").apply {
+            if (skillsFit) dataMap.putString("skills", skillsJson)
             dataMap.putString("primaryProvider", ProviderSettings.getPrimaryProvider(this@SettingsActivity))
             dataMap.putString("anthropicKey", ProviderSettings.getKey(this@SettingsActivity, ProviderSettings.PROVIDER_ANTHROPIC))
             dataMap.putString("anthropicModel", ProviderSettings.getModel(this@SettingsActivity, ProviderSettings.PROVIDER_ANTHROPIC))
@@ -406,7 +417,10 @@ class SettingsActivity : AppCompatActivity() {
         }.asPutDataRequest().setUrgent()
 
         Wearable.getDataClient(this).putDataItem(request)
-            .addOnSuccessListener { Snackbar.make(binding.root, R.string.watch_sent, Snackbar.LENGTH_LONG).show() }
+            .addOnSuccessListener {
+                val message = if (skillsFit) R.string.watch_sent else R.string.watch_sent_without_skills
+                Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+            }
             .addOnFailureListener { e ->
                 Snackbar.make(binding.root, getString(R.string.watch_send_failed, e.message ?: "?"), Snackbar.LENGTH_LONG).show()
             }
@@ -521,6 +535,9 @@ class SettingsActivity : AppCompatActivity() {
 
         /** Direkt die "Fine-grained token"-Erstellseite — Tokens lassen sich nur im Browser anlegen, nicht in der GitHub-App. */
         private const val URL_CREATE_TOKEN = "https://github.com/settings/personal-access-tokens/new"
+
+        /** Data Items der Wearable-API sind auf ~100 KB begrenzt; etwas Luft für die übrigen Felder lassen. */
+        private const val MAX_SKILLS_SYNC_BYTES = 90_000
     }
 }
 

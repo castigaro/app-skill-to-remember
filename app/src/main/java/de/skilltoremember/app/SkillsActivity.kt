@@ -198,6 +198,12 @@ class SkillsActivity : AppCompatActivity() {
             importZip.launch(arrayOf("*/*"))
             true
         }
+        R.id.action_skill_library -> {
+            // Fertige Skills zum Herunterladen — ZIP speichern, dann hier über "ZIP importieren" einspielen.
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SKILL_LIBRARY_URL))) }
+                .onFailure { Snackbar.make(binding.root, R.string.no_browser, Snackbar.LENGTH_LONG).show() }
+            true
+        }
         else -> super.onOptionsItemSelected(item)
     }
 
@@ -208,5 +214,6 @@ class SkillsActivity : AppCompatActivity() {
 
     companion object {
         private const val MAX_SKILL_MD_BYTES = 2 * 1024 * 1024
+        private const val SKILL_LIBRARY_URL = "https://appsonar.de/apps/skilltoremember.html#skill-bibliothek"
     }
 }
