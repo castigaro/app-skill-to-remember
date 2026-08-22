@@ -87,5 +87,15 @@ cd app-skill-to-remember
 APK liegt danach unter `app/build/outputs/apk/debug/`.
 
 CI baut per `.github/workflows/build.yml` und veröffentlicht die APKs samt
-Versions-Manifest im GitHub-Release `latest`. Die App prüft aktuell nicht
-selbst auf neue Versionen (kein Update-Checker eingebaut).
+Versions-Manifest im GitHub-Release `latest`. Die Handy-App prüft beim
+Start auf neue Versionen und bietet in den Einstellungen eine manuelle
+Update-Prüfung samt Installation an; die Uhr-App wird per adb aktualisiert.
+
+## Lizenz
+
+GNU Affero General Public License v3.0 (AGPL-3.0) — siehe [LICENSE](LICENSE).
+Copyright © 2026 Torsten Klein (AppSonar, appsonar.de).
+
+Frei nutzen, verändern und weitergeben. Wer eine veränderte Fassung
+verbreitet — auch als Netzwerkdienst — muss den vollständigen Quellcode
+unter derselben Lizenz offenlegen.
