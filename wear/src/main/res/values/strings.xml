@@ -13,4 +13,5 @@
     <string name="wear_update_available">Version %1$s verfügbar — Uhr-App per adb aktualisieren.</string>
     <string name="wear_memory_ready">Gedächtnis verbunden.</string>
     <string name="wear_memory_failed">Gedächtnis nicht geladen: %1$s</string>
+    <string name="wear_location_denied">Ohne Standort-Berechtigung kann die KI hier keinen Ort ermitteln.</string>
 </resources>

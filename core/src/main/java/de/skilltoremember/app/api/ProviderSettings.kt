@@ -91,6 +91,15 @@ object ProviderSettings {
         prefs(context).edit().putBoolean("webSearchEnabled", enabled).apply()
     }
 
+    // ---- Standort (get_location-Tool, Default aus) ----
+
+    fun isLocationEnabled(context: Context): Boolean =
+        prefs(context).getBoolean("locationEnabled", false)
+
+    fun setLocationEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("locationEnabled", enabled).apply()
+    }
+
     // ---- Kostenzähler (Mikro-Dollar, geschätzt) ----
 
     fun getCostMicros(context: Context, provider: String): Long =

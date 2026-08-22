@@ -82,6 +82,12 @@
     <string name="web_search_confirm_message">Jede Websuche kostet zusätzlich zu den normalen Token-Kosten etwa 0,01 $ (10 $ pro 1.000 Suchen). Eine Antwort kann bis zu 5 Suchen auslösen, und die gefundenen Inhalte zählen als Eingabe-Token. Die Kosten fließen mit in den Kostenzähler ein.\n\nFür die Uhr gilt die Einstellung nach dem nächsten „Einstellungen an die Uhr senden“.</string>
     <string name="web_search_confirm_on">Aktivieren</string>
 
+    <!-- Einstellungen: Standort -->
+    <string name="title_location">Standort</string>
+    <string name="location_intro">Gibt der KI ein Werkzeug, um den ungefähren Standort abzufragen — für Fragen wie „Wo bin ich?“, zur Umgebung oder (mit Websuche) zum lokalen Wetter. Der Standort wird nur dann an den KI-Anbieter übertragen, wenn das Modell ihn für die Antwort wirklich abruft.</string>
+    <string name="location_enabled">Standortabfrage erlauben</string>
+    <string name="location_permission_denied">Ohne Standort-Berechtigung bleibt die Funktion aus.</string>
+
     <!-- Einstellungen: Gedächtnis -->
     <string name="title_memory">Gedächtnis</string>
     <string name="memory_intro">Der eingebaute Skill „humanoid-behavior“ merkt sich über Chats hinweg, was zählt — gespeichert in einem privaten GitHub-Repo, das nur dir gehört. Leeres privates Repo anlegen und hier eintragen.</string>

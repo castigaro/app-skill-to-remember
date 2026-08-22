@@ -21,7 +21,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.time.Instant
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
@@ -47,6 +50,7 @@ object ChatApi {
     private const val TOOL_REMEMBER = "remember"
     private const val TOOL_RECALL = "recall"
     private const val TOOL_FORGET = "forget"
+    private const val TOOL_GET_LOCATION = "get_location"
     private const val MAX_TOOL_ROUNDS = 6
     private const val MEMORY_PULL_INTERVAL_SECONDS = 5 * 60L
 
@@ -129,8 +133,18 @@ object ChatApi {
         }
     }
 
+    /**
+     * Datum und Uhrzeit gehören in jeden System-Prompt: Ohne sie kann das Modell
+     * "heute", "morgen" oder fällige Erinnerungen nicht auflösen — sein
+     * Trainingswissen endet irgendwann, die Geräteuhr nicht.
+     */
+    internal fun dateTimeLine(now: ZonedDateTime): String {
+        val formatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy, HH:mm", Locale.GERMAN)
+        return "Aktuelles Datum und Uhrzeit beim Nutzer: ${now.format(formatter)} Uhr (Zeitzone ${now.zone.id})."
+    }
+
     private fun buildSystemPrompt(skills: List<Skill>, memoryActive: Boolean, digest: String?, concise: Boolean): String {
-        val parts = mutableListOf(BASE_SYSTEM_PROMPT)
+        val parts = mutableListOf(BASE_SYSTEM_PROMPT, dateTimeLine(ZonedDateTime.now()))
         if (concise) {
             parts.add(CONCISE_PROMPT)
         }
@@ -175,8 +189,27 @@ object ChatApi {
             TOOL_REMEMBER -> executeRemember(context, input, memoryStore)
             TOOL_RECALL -> executeRecall(input, memoryStore)
             TOOL_FORGET -> executeForget(context, input, memoryStore)
+            TOOL_GET_LOCATION ->
+                if (ProviderSettings.isLocationEnabled(context)) LocationProvider.describe(context)
+                else "Standortabfrage ist in den Einstellungen deaktiviert."
             else -> "Unbekanntes Tool \"$name\"."
         }
+
+    /** Standort-Werkzeug — parameterlos; das Modell soll es nur bei Ortsbezug aufrufen. */
+    private fun locationTool(forOpenAi: Boolean): JSONObject {
+        val description = "Ermittelt den ungefähren aktuellen Standort des Nutzers (Ortsname und " +
+            "Koordinaten). Nur aufrufen, wenn die Frage einen Bezug zum Aufenthaltsort hat — " +
+            "z. B. \"Wo bin ich?\", lokales Wetter oder Fragen zur Umgebung."
+        val schema = JSONObject().put("type", "object").put("properties", JSONObject())
+        return if (forOpenAi) {
+            JSONObject().put("type", "function").put(
+                "function",
+                JSONObject().put("name", TOOL_GET_LOCATION).put("description", description).put("parameters", schema),
+            )
+        } else {
+            JSONObject().put("name", TOOL_GET_LOCATION).put("description", description).put("input_schema", schema)
+        }
+    }
 
     private fun executeRemember(context: Context, input: JSONObject, memoryStore: MemoryStore?): String {
         if (memoryStore == null) return "Kein Gedächtnis-Repo verbunden."
@@ -307,8 +340,11 @@ object ChatApi {
 
     // ---- Anthropic ----
 
-    internal fun anthropicTools(skills: List<Skill>, memoryStore: MemoryStore?, webSearch: Boolean): JSONArray {
+    internal fun anthropicTools(skills: List<Skill>, memoryStore: MemoryStore?, webSearch: Boolean, location: Boolean): JSONArray {
         val tools = JSONArray()
+        if (location) {
+            tools.put(locationTool(forOpenAi = false))
+        }
         if (webSearch) {
             // Serverseitig: Anthropic führt die Suche selbst aus, die App muss nichts tun.
             tools.put(JSONObject().apply {
@@ -357,7 +393,11 @@ object ChatApi {
                 put("content", msg.text)
             })
         }
-        val tools = anthropicTools(skills, memoryStore, ProviderSettings.isWebSearchEnabled(context))
+        val tools = anthropicTools(
+            skills, memoryStore,
+            webSearch = ProviderSettings.isWebSearchEnabled(context),
+            location = ProviderSettings.isLocationEnabled(context),
+        )
 
         for (round in 0..MAX_TOOL_ROUNDS) {
             val body = JSONObject().apply {
@@ -475,8 +515,11 @@ object ChatApi {
 
     // ---- OpenAI ----
 
-    private fun openAiTools(skills: List<Skill>, memoryStore: MemoryStore?): JSONArray {
+    private fun openAiTools(skills: List<Skill>, memoryStore: MemoryStore?, location: Boolean): JSONArray {
         val tools = JSONArray()
+        if (location) {
+            tools.put(locationTool(forOpenAi = true))
+        }
         if (skills.isNotEmpty()) {
             tools.put(JSONObject().apply {
                 put("type", "function")
@@ -520,7 +563,7 @@ object ChatApi {
                 put("content", msg.text)
             })
         }
-        val tools = openAiTools(skills, memoryStore)
+        val tools = openAiTools(skills, memoryStore, location = ProviderSettings.isLocationEnabled(context))
 
         for (round in 0..MAX_TOOL_ROUNDS) {
             val body = JSONObject().apply {

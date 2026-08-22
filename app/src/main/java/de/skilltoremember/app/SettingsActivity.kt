@@ -1,9 +1,13 @@
 package de.skilltoremember.app
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import android.speech.tts.TextToSpeech
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
@@ -43,6 +47,16 @@ class SettingsActivity : AppCompatActivity() {
     /** Technische Stimmen-Namen, parallel zur Dropdown-Liste (Index 0 = Systemstandard). */
     private val voiceNames = mutableListOf<String>()
 
+    /** Der Standort-Schalter greift erst, wenn die System-Berechtigung wirklich erteilt wurde. */
+    private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            ProviderSettings.setLocationEnabled(this, true)
+        } else {
+            binding.switchLocation.isChecked = false
+            Snackbar.make(binding.root, R.string.location_permission_denied, Snackbar.LENGTH_LONG).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
@@ -53,8 +67,27 @@ class SettingsActivity : AppCompatActivity() {
         setUpProviderSection()
         setUpMemorySection()
         setUpVoiceSection()
+        setUpLocationSection()
         binding.buttonSendToWatch.setOnClickListener { sendConfigToWatch() }
         setUpUpdateSection()
+    }
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    private fun setUpLocationSection() {
+        binding.switchLocation.isChecked = ProviderSettings.isLocationEnabled(this) && hasLocationPermission()
+        binding.switchLocation.setOnCheckedChangeListener { _, checked ->
+            if (checked) {
+                if (hasLocationPermission()) {
+                    ProviderSettings.setLocationEnabled(this, true)
+                } else {
+                    locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                }
+            } else {
+                ProviderSettings.setLocationEnabled(this, false)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -360,6 +393,7 @@ class SettingsActivity : AppCompatActivity() {
             dataMap.putString("openaiModel", ProviderSettings.getModel(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
             dataMap.putBoolean("openaiEnabled", ProviderSettings.isEnabled(this@SettingsActivity, ProviderSettings.PROVIDER_OPENAI))
             dataMap.putBoolean("webSearch", ProviderSettings.isWebSearchEnabled(this@SettingsActivity))
+            dataMap.putBoolean("location", ProviderSettings.isLocationEnabled(this@SettingsActivity))
             dataMap.putString("memOwner", MemorySettings.getOwner(this@SettingsActivity))
             dataMap.putString("memRepo", MemorySettings.getRepo(this@SettingsActivity))
             dataMap.putString("memBranch", MemorySettings.getBranch(this@SettingsActivity))

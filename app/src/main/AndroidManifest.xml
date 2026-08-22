@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Für das In-App-Update: heruntergeladene APK an den System-Installer übergeben. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Fürs get_location-Tool (Schalter in den Einstellungen, Default aus). Grob reicht: Ortsebene, nicht Straßenebene. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- Spracheingabe läuft über den System-Dialog (RecognizerIntent),
          daher keine eigene Mikrofon-Berechtigung nötig. -->

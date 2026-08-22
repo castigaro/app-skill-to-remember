@@ -18,7 +18,7 @@ object BuiltInSkills {
      * ihn dann bei bestehenden Installationen nach (nur den Text; Name,
      * Beschreibung und Aktiv-Schalter des Nutzers bleiben unangetastet).
      */
-    const val VERSION = 2
+    const val VERSION = 3
 
     val HUMANOID_BEHAVIOR = Skill(
         id = "builtin-humanoid-behavior",
@@ -92,6 +92,21 @@ object BuiltInSkills {
             - Memory can be personal. Never read it out wholesale, paste it into a file the
               user did not ask for, or send it to any external service.
             - When the user asks what you know, answer from `recall`, not from impression.
+
+            ## Reminders
+
+            - The current date and time are always stated in the system prompt — trust
+              them, never guess today's date.
+            - Store reminder requests ("erinnere mich am …") as `epi` entries under
+              `reminder.<subject>`, with the concrete date written into the value in
+              ISO form (e.g. "am 2026-09-20"), so due dates stay machine-checkable.
+            - At the start of a conversation, compare stored reminders against today's
+              date. If one is due today, overdue, or due within the next two days,
+              mention it briefly at the top of your first reply before answering the
+              user's request. Do not repeat it in every reply.
+            - If the user asks for something this device cannot do (a calendar entry or
+              an e-mail on the watch), store the wish as a reminder and say it can be
+              completed on the phone.
 
             ## Tools
 

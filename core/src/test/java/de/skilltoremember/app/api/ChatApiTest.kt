@@ -9,6 +9,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 @RunWith(RobolectricTestRunner::class)
 class ChatApiTest {
@@ -35,12 +37,28 @@ class ChatApiTest {
 
     @Test
     fun `Websuche-Tool steht nur bei eingeschalteter Websuche in der Werkzeugliste`() {
-        val with = ChatApi.anthropicTools(emptyList(), null, webSearch = true)
+        val with = ChatApi.anthropicTools(emptyList(), null, webSearch = true, location = false)
         assertEquals(1, with.length())
         assertEquals("web_search_20250305", with.getJSONObject(0).getString("type"))
         assertEquals("web_search", with.getJSONObject(0).getString("name"))
 
-        assertEquals(0, ChatApi.anthropicTools(emptyList(), null, webSearch = false).length())
+        assertEquals(0, ChatApi.anthropicTools(emptyList(), null, webSearch = false, location = false).length())
+    }
+
+    @Test
+    fun `Standort-Tool steht nur bei eingeschaltetem Standort in der Werkzeugliste`() {
+        val with = ChatApi.anthropicTools(emptyList(), null, webSearch = false, location = true)
+        assertEquals(1, with.length())
+        assertEquals("get_location", with.getJSONObject(0).getString("name"))
+    }
+
+    @Test
+    fun `System-Prompt-Zeile nennt Wochentag, Datum, Uhrzeit und Zeitzone`() {
+        val line = ChatApi.dateTimeLine(ZonedDateTime.of(2026, 8, 22, 9, 30, 0, 0, ZoneId.of("Europe/Berlin")))
+        assertTrue(line.contains("Samstag"))
+        assertTrue(line.contains("22. August 2026"))
+        assertTrue(line.contains("09:30"))
+        assertTrue(line.contains("Europe/Berlin"))
     }
 
     @Test

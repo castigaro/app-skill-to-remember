@@ -1,8 +1,10 @@
 package de.skilltoremember.app.wear
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
@@ -51,6 +53,13 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
 
     /** Nach einer vorgelesenen Antwort automatisch wieder zuhören. */
     private var autoListen = false
+
+    /** Wird angestoßen, sobald die Standort-Einstellung vom Handy ankommt — Uhr hat ja keine eigene Einstellungsseite. */
+    private val locationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) Toast.makeText(this, R.string.wear_location_denied, Toast.LENGTH_LONG).show()
+    }
 
     private val speechInput = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -171,6 +180,7 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
             openaiEnabled = map.getBoolean("openaiEnabled", true),
         )
         ProviderSettings.setWebSearchEnabled(this, map.getBoolean("webSearch", false))
+        ProviderSettings.setLocationEnabled(this, map.getBoolean("location", false))
         MemorySettings.save(
             this,
             owner = map.getString("memOwner") ?: "",
@@ -180,7 +190,15 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
         )
         VoiceSettings.setRate(this, map.getFloat("rate", VoiceSettings.DEFAULT_RATE))
         VoiceSettings.setPitch(this, map.getFloat("pitch", VoiceSettings.DEFAULT_PITCH))
+        ensureLocationPermission()
         restoreMemoryIfNeeded()
+    }
+
+    /** Fragt die Standort-Berechtigung ab, wenn das Handy die Funktion aktiviert hat und sie hier noch fehlt. */
+    private fun ensureLocationPermission() {
+        if (!ProviderSettings.isLocationEnabled(this)) return
+        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) return
+        runCatching { locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
     }
 
     /** Holt ein bestehendes Gedächtnis vom Repo, falls lokal noch keins liegt — mit sichtbarem Ergebnis. */
