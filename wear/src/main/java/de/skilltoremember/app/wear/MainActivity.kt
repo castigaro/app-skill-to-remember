@@ -107,6 +107,13 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
         // App zwischendurch beendet): bei jedem Start erneut probieren.
         restoreMemoryIfNeeded()
         checkForUpdate()
+
+        // "Sofort zuhören": App öffnen = sprechen, ohne Mikrofon-Tipp — z. B.
+        // per Doppeldruck auf die Home-Taste der Uhr oder "Hey Google, öffne …".
+        if (savedInstanceState == null && VoiceSettings.isAutoListenEnabled(this) && ProviderSettings.isConfigured(this)) {
+            autoListen = true
+            startListening()
+        }
     }
 
     /** Installieren geht auf der Uhr nur per adb — hier gibt es deshalb nur den Hinweis. */
@@ -190,6 +197,7 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
         )
         VoiceSettings.setRate(this, map.getFloat("rate", VoiceSettings.DEFAULT_RATE))
         VoiceSettings.setPitch(this, map.getFloat("pitch", VoiceSettings.DEFAULT_PITCH))
+        VoiceSettings.setAutoListenEnabled(this, map.getBoolean("autoListen", false))
         ensureLocationPermission()
         restoreMemoryIfNeeded()
     }

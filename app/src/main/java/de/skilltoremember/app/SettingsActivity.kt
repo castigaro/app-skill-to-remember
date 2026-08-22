@@ -400,6 +400,7 @@ class SettingsActivity : AppCompatActivity() {
             dataMap.putString("memToken", MemorySettings.getToken(this@SettingsActivity))
             dataMap.putFloat("rate", VoiceSettings.getRate(this@SettingsActivity))
             dataMap.putFloat("pitch", VoiceSettings.getPitch(this@SettingsActivity))
+            dataMap.putBoolean("autoListen", VoiceSettings.isAutoListenEnabled(this@SettingsActivity))
             // Zeitstempel erzwingt ein Change-Event, auch wenn sich sonst nichts geändert hat.
             dataMap.putLong("sentAt", System.currentTimeMillis())
         }.asPutDataRequest().setUrgent()
@@ -430,6 +431,11 @@ class SettingsActivity : AppCompatActivity() {
             binding.labelVoicePitch.text = getString(R.string.voice_pitch_label, value)
         }
         binding.buttonVoiceTest.setOnClickListener { playVoiceSample() }
+
+        binding.switchAutoListen.isChecked = VoiceSettings.isAutoListenEnabled(this)
+        binding.switchAutoListen.setOnCheckedChangeListener { _, checked ->
+            VoiceSettings.setAutoListenEnabled(this, checked)
+        }
 
         voicePreviewTts = TextToSpeech(this) { status ->
             runOnUiThread {

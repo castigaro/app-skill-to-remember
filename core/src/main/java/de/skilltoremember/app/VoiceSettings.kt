@@ -22,6 +22,13 @@ object VoiceSettings {
     fun getRate(context: Context): Float = prefs(context).getFloat("rate", DEFAULT_RATE)
     fun getPitch(context: Context): Float = prefs(context).getFloat("pitch", DEFAULT_PITCH)
 
+    /** "Sofort zuhören": App-Start springt direkt in den Sprachdialog (Default aus). */
+    fun isAutoListenEnabled(context: Context): Boolean = prefs(context).getBoolean("autoListen", false)
+
+    fun setAutoListenEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("autoListen", enabled).apply()
+    }
+
     fun setVoiceName(context: Context, name: String) {
         prefs(context).edit().putString("voiceName", name).apply()
     }

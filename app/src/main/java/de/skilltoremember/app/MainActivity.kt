@@ -38,6 +38,24 @@ class MainActivity : AppCompatActivity() {
         binding.fabNewChat.setOnClickListener { startNewChat() }
 
         checkForUpdate()
+
+        // "Sofort zuhören": Frischer App-Start springt direkt in den Sprachdialog —
+        // gedacht für den Schnellzugriff per Hardware-Taste (z. B. Funktionstaste
+        // doppelt drücken -> App öffnen). Nur bei savedInstanceState == null, damit
+        // Rotation oder Zurück-Navigation nicht erneut hineinspringen.
+        if (savedInstanceState == null && VoiceSettings.isAutoListenEnabled(this) && ProviderSettings.isConfigured(this)) {
+            startDialogChat()
+        }
+    }
+
+    /** Öffnet den zuletzt angelegten Chat (oder einen neuen) direkt im Dialogmodus. */
+    private fun startDialogChat() {
+        val chat = ChatStore.getAll(this).firstOrNull() ?: Chat().also { ChatStore.add(this, it) }
+        startActivity(
+            Intent(this, ChatActivity::class.java)
+                .putExtra(ChatActivity.EXTRA_CHAT_ID, chat.id)
+                .putExtra(ChatActivity.EXTRA_START_DIALOG, true),
+        )
     }
 
     /** Einmal pro App-Start, still: gibt es im GitHub-Release eine neuere Version? */

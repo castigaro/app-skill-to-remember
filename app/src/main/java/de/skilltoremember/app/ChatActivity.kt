@@ -101,6 +101,14 @@ class ChatActivity : AppCompatActivity() {
         lastSpokenRevision = viewModel.state.value.revision
         if (viewModel.state.value.dialogMode) ensureTts { }
 
+        // Vom "Sofort zuhören"-Start geöffnet: direkt in den Dialogmodus springen.
+        if (savedInstanceState == null &&
+            intent.getBooleanExtra(EXTRA_START_DIALOG, false) &&
+            !viewModel.state.value.dialogMode
+        ) {
+            toggleDialogMode()
+        }
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.state.collect { state -> renderState(state) }
@@ -283,5 +291,6 @@ class ChatActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CHAT_ID = "chatId"
+        const val EXTRA_START_DIALOG = "startDialog"
     }
 }
