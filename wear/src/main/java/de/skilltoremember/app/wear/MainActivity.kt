@@ -296,6 +296,15 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
                 withContext(Dispatchers.IO) { ChatStore.save(applicationContext) }
                 binding.replyText.text = reply
                 binding.replyScroll.scrollTo(0, 0)
+                // Ein hängender Abgleich soll auffallen, nicht nur im Logcat
+                // stehen — auf der Uhr gibt es sonst keinen Blick in die Sync-Welt.
+                MemorySettings.getLastSyncError(applicationContext)?.let { fehler ->
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.wear_sync_error, fehler),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
                 speak(reply)
             } catch (e: Exception) {
                 binding.replyText.text = getString(R.string.wear_error, e.message ?: "?")

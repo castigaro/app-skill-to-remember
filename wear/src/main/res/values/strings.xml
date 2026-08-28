@@ -14,4 +14,5 @@
     <string name="wear_memory_ready">Gedächtnis verbunden.</string>
     <string name="wear_memory_failed">Gedächtnis nicht geladen: %1$s</string>
     <string name="wear_location_denied">Ohne Standort-Berechtigung kann die KI hier keinen Ort ermitteln.</string>
+    <string name="wear_sync_error">Gedächtnis-Abgleich fehlgeschlagen: %1$s</string>
 </resources>
