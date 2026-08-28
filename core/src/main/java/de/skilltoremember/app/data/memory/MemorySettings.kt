@@ -28,7 +28,20 @@ object MemorySettings {
     }
 
     fun setLastSync(context: Context, iso: String) {
-        prefs(context).edit().putString("lastSync", iso).apply()
+        prefs(context).edit().putString("lastSync", iso).remove("lastSyncError").apply()
+    }
+
+    /**
+     * Der letzte Sync-Fehler im Klartext — `null`, wenn der letzte Abgleich
+     * durchging. Die Sync-Pfade laufen bewusst in runCatching, damit ein
+     * Netzfehler keine Antwort abbricht; ohne diesen Merker wäre ein
+     * dauerhaft scheiternder Abgleich aber komplett unsichtbar (genau so
+     * blieb eine nicht mehr syncende Uhr wochenlang unentdeckt).
+     */
+    fun getLastSyncError(context: Context): String? = prefs(context).getString("lastSyncError", null)
+
+    fun setLastSyncError(context: Context, message: String) {
+        prefs(context).edit().putString("lastSyncError", message).apply()
     }
 
     fun clear(context: Context) {

@@ -1,6 +1,7 @@
 package de.skilltoremember.app.api
 
 import android.content.Context
+import android.util.Log
 import de.skilltoremember.app.data.BuiltInSkills
 import de.skilltoremember.app.data.Chat
 import de.skilltoremember.app.data.Message
@@ -64,6 +65,9 @@ object ChatApi {
 
     /** Überschrift des angehängten Quellen-Blocks — die Sprachausgabe schneidet ab hier ab. */
     const val SOURCES_HEADING = "Quellen:"
+
+    /** Logcat-Tag der Gedächtnis-Abgleiche — `adb logcat -s StRSync` zeigt sie. */
+    private const val SYNC_TAG = "StRSync"
 
     private val JSON = "application/json".toMediaType()
 
@@ -217,6 +221,9 @@ object ChatApi {
             GitHubMemorySync.pull(store, MemorySettings.config(context))
             MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
             MemorySettings.setLastSync(context, MemoryClock.isoNow())
+        }.onFailure { fehler ->
+            Log.w(SYNC_TAG, "Gedächtnis-Pull fehlgeschlagen", fehler)
+            MemorySettings.setLastSyncError(context, fehler.message ?: fehler.javaClass.simpleName)
         }
     }
 
@@ -300,6 +307,9 @@ object ChatApi {
                         GitHubMemorySync.pull(memoryStore, MemorySettings.config(context))
                         MemoryEngine.reindex(memoryStore, memoryStore.loadEntries(), memoryStore.meta(), MemoryClock.now())
                         MemorySettings.setLastSync(context, MemoryClock.isoNow())
+                    }.onFailure { fehler ->
+                        Log.w(SYNC_TAG, "Skill-Pull fehlgeschlagen", fehler)
+                        MemorySettings.setLastSyncError(context, fehler.message ?: fehler.javaClass.simpleName)
                     }
                 }
                 skill?.body ?: unknownSkillMessage(skillName, skills)
@@ -480,7 +490,11 @@ object ChatApi {
         meta.put("last_sync", MemoryClock.isoNow())
         store.saveMeta(meta)
         MemorySettings.setLastSync(context, MemoryClock.isoNow())
+        Log.i(SYNC_TAG, "Gedächtnis synchronisiert")
         true
+    }.onFailure { fehler ->
+        Log.w(SYNC_TAG, "Gedächtnis-Sync fehlgeschlagen", fehler)
+        MemorySettings.setLastSyncError(context, fehler.message ?: fehler.javaClass.simpleName)
     }.getOrDefault(false)
 
     private fun memoryTools(memoryStore: MemoryStore?, forOpenAi: Boolean): List<JSONObject> {
