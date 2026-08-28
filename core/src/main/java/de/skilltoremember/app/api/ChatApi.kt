@@ -14,6 +14,9 @@ import de.skilltoremember.app.data.memory.MemoryEngine
 import de.skilltoremember.app.data.memory.MemorySettings
 import de.skilltoremember.app.data.memory.MemoryStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -69,6 +72,9 @@ object ChatApi {
     /** Logcat-Tag der Gedächtnis-Abgleiche — `adb logcat -s StRSync` zeigt sie. */
     private const val SYNC_TAG = "StRSync"
 
+    /** Eigener Geltungsbereich für Hintergrund-Syncs — überlebt die Antwort-Runde. */
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val JSON = "application/json".toMediaType()
 
     private val client = OkHttpClient.Builder()
@@ -110,10 +116,15 @@ object ChatApi {
             // finally, damit auch eine abgebrochene Antwort ihre schon
             // geschriebenen Einträge noch verteilt. `dirty` fängt zusätzlich
             // Altlasten früherer fehlgeschlagener Syncs auf.
+            //
+            // Der Sync läuft im HINTERGRUND: Auf der Uhr sind das ~15
+            // HTTP-Aufrufe über den Bluetooth-Proxy — darauf soll niemand
+            // warten, bevor die Antwort gesprochen wird. Stirbt der Prozess
+            // vorher, bleibt `dirty` stehen und die nächste Runde holt nach.
             if (memoryStore != null && MemorySettings.isConfigured(context)
                 && (turn.geschrieben || memoryStore.meta().optBoolean("dirty", false))
             ) {
-                syncAfterWrite(context, memoryStore)
+                syncScope.launch { syncAfterWrite(context, memoryStore) }
             }
         }
     }
