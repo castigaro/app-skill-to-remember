@@ -92,13 +92,37 @@ object ChatApi {
         memoryStore?.let { pullMemoryIfStale(context, it) }
         val digest = memoryStore?.let { runCatching { MemoryEngine.boot(it).digest }.getOrNull() }
         val systemPrompt = buildSystemPrompt(skills, memoryStore != null, digest, concise)
+        val turn = Turn()
 
-        if (config.provider == ProviderSettings.PROVIDER_OPENAI) {
-            requestOpenAi(context, config.apiKey, config.model, systemPrompt, chat.messages, skills, memoryStore)
-        } else {
-            requestAnthropic(context, config.apiKey, config.model, systemPrompt, chat.messages, skills, memoryStore)
+        try {
+            if (config.provider == ProviderSettings.PROVIDER_OPENAI) {
+                requestOpenAi(context, config.apiKey, config.model, systemPrompt, chat.messages, skills, memoryStore, turn = turn)
+            } else {
+                requestAnthropic(context, config.apiKey, config.model, systemPrompt, chat.messages, skills, memoryStore, turn = turn)
+            }
+        } finally {
+            // EIN Sync je Antwort statt einer je Schreib-Tool: "Milch, Butter,
+            // Brot" ist damit ein Commit, nicht drei volle Sync-Runden. Im
+            // finally, damit auch eine abgebrochene Antwort ihre schon
+            // geschriebenen Einträge noch verteilt. `dirty` fängt zusätzlich
+            // Altlasten früherer fehlgeschlagener Syncs auf.
+            if (memoryStore != null && MemorySettings.isConfigured(context)
+                && (turn.geschrieben || memoryStore.meta().optBoolean("dirty", false))
+            ) {
+                syncAfterWrite(context, memoryStore)
+            }
         }
     }
+
+    /**
+     * Zustand einer einzelnen Antwort-Runde: gab es Schreibzugriffe (dann am
+     * Ende EIN Sync), und wurde das Gedächtnis für diese Runde schon frisch
+     * gepullt (dann nicht noch einmal je geladenem Skill).
+     */
+    internal class Turn(
+        var geschrieben: Boolean = false,
+        var frischGepullt: Boolean = false,
+    )
 
     private fun memoryStoreIfActive(context: Context, skills: List<Skill>): MemoryStore? {
         val skillActive = skills.any { it.id == BuiltInSkills.HUMANOID_BEHAVIOR.id }
@@ -115,6 +139,8 @@ object ChatApi {
         über eine Sprachausgabe. Fasse dich deshalb besonders kurz — zwei,
         drei gesprochene Sätze, keine Aufzählungen, kein Markdown, keine
         Codeblöcke. Nenne erst dann mehr Details, wenn der Nutzer nachfragt.
+        Die Kürze gilt NUR für den gesprochenen Text: Werkzeuge (Skills laden,
+        Gedächtnis) nutzt du weiterhin vollständig und gewissenhaft.
     """.trimIndent()
 
     // ---- KI-Skill-Autor: aus einer Idee eine saubere SKILL.md machen ----
@@ -204,13 +230,28 @@ object ChatApi {
         return "Aktuelles Datum und Uhrzeit beim Nutzer: ${now.format(formatter)} Uhr (Zeitzone ${now.zone.id})."
     }
 
-    private fun buildSystemPrompt(skills: List<Skill>, memoryActive: Boolean, digest: String?, concise: Boolean): String {
+    internal fun buildSystemPrompt(skills: List<Skill>, memoryActive: Boolean, digest: String?, concise: Boolean): String {
         val parts = mutableListOf(BASE_SYSTEM_PROMPT, dateTimeLine(ZonedDateTime.now()))
         if (concise) {
             parts.add(CONCISE_PROMPT)
         }
         if (memoryActive && digest != null) {
             parts.add(digest.trim())
+        }
+        if (memoryActive) {
+            // Die harte Regel gegen das "Schein-Speichern": Das Modell hatte
+            // Einträge bestätigt, ohne das Werkzeug zu rufen — jedes Gerät
+            // führte seine Liste nur im eigenen Chatverlauf.
+            parts.add(
+                """
+                    Gedächtnis-Regel: Sage NIEMALS, dass du dir etwas gemerkt, gespeichert,
+                    auf eine Liste gesetzt oder vergessen hast, ohne dass der zugehörige
+                    Werkzeug-Aufruf ($TOOL_REMEMBER bzw. $TOOL_FORGET) in dieser Antwort
+                    erfolgreich war. Eine Bestätigung ohne Werkzeug-Aufruf ist eine falsche
+                    Auskunft. Antworten aus dem Gesprächsverlauf ersetzen keinen Abruf per
+                    $TOOL_RECALL.
+                """.trimIndent(),
+            )
         }
         if (skills.isNotEmpty()) {
             val list = skills.joinToString("\n") { "- ${it.name}: ${it.description}" }
@@ -220,7 +261,9 @@ object ChatApi {
                     $list
 
                     Ruf "$TOOL_LOAD_SKILL" auf, sobald ein Skill zur Anfrage passt, und befolge
-                    danach dessen Anleitung. Ohne passenden Skill antworte normal.
+                    danach dessen Anleitung — insbesondere IMMER, bevor du etwas merkst,
+                    auf eine Liste setzt oder eine Liste vorliest, wenn ein Skill dafür
+                    existiert. Ohne passenden Skill antworte normal.
                 """.trimIndent(),
             )
         }
@@ -240,16 +283,30 @@ object ChatApi {
 
     // ---- Tool-Ausführung (gemeinsam für Anthropic und OpenAI) ----
 
-    private fun executeTool(context: Context, name: String, input: JSONObject, skills: List<Skill>, memoryStore: MemoryStore?): String =
+    private fun executeTool(context: Context, name: String, input: JSONObject, skills: List<Skill>, memoryStore: MemoryStore?, turn: Turn): String =
         when (name) {
             TOOL_LOAD_SKILL -> {
                 val skillName = input.optString("name")
                 val skill = findSkill(skills, skillName)
+                // Wer einen Skill lädt, will gleich mit dem Gedächtnis arbeiten —
+                // die Lese-Drossel wird hier einmal je Runde übersprungen, damit
+                // z. B. die Einkaufsliste den Stand des anderen Geräts von JETZT
+                // sieht, nicht den von vor fünf Minuten.
+                if (skill != null && memoryStore != null && !turn.frischGepullt
+                    && MemorySettings.isConfigured(context)
+                ) {
+                    turn.frischGepullt = true
+                    runCatching {
+                        GitHubMemorySync.pull(memoryStore, MemorySettings.config(context))
+                        MemoryEngine.reindex(memoryStore, memoryStore.loadEntries(), memoryStore.meta(), MemoryClock.now())
+                        MemorySettings.setLastSync(context, MemoryClock.isoNow())
+                    }
+                }
                 skill?.body ?: unknownSkillMessage(skillName, skills)
             }
-            TOOL_REMEMBER -> executeRemember(context, input, memoryStore)
+            TOOL_REMEMBER -> executeRemember(input, memoryStore, turn)
             TOOL_RECALL -> executeRecall(input, memoryStore)
-            TOOL_FORGET -> executeForget(context, input, memoryStore)
+            TOOL_FORGET -> executeForget(input, memoryStore, turn)
             TOOL_GET_LOCATION ->
                 if (ProviderSettings.isLocationEnabled(context)) LocationProvider.describe(context)
                 else "Standortabfrage ist in den Einstellungen deaktiviert."
@@ -353,7 +410,7 @@ object ChatApi {
         }
     }
 
-    private fun executeRemember(context: Context, input: JSONObject, memoryStore: MemoryStore?): String {
+    private fun executeRemember(input: JSONObject, memoryStore: MemoryStore?, turn: Turn): String {
         if (memoryStore == null) return "Kein Gedächtnis-Repo verbunden."
         val keywords = input.optJSONArray("keywords")?.let { arr -> (0 until arr.length()).map { arr.getString(it) } }.orEmpty()
         val result = runCatching {
@@ -370,14 +427,14 @@ object ChatApi {
         return result.fold(
             onSuccess = { r ->
                 if (!r.stored) return "Nicht gespeichert: ${r.reason}"
-                val synced = trySyncAfterWrite(context, memoryStore)
-                "Gespeichert (${r.outcome})." + if (synced) "" else " Nicht synchronisiert — bleibt vorerst nur auf diesem Gerät."
+                turn.geschrieben = true // der Sync läuft EINMAL am Ende der Runde
+                "Gespeichert (${r.outcome})."
             },
             onFailure = { e -> "Fehler beim Speichern: ${e.message}" },
         )
     }
 
-    private fun executeRecall(input: JSONObject, memoryStore: MemoryStore?): String {
+    internal fun executeRecall(input: JSONObject, memoryStore: MemoryStore?): String {
         if (memoryStore == null) return "Kein Gedächtnis-Repo verbunden."
         val result = runCatching {
             MemoryEngine.recall(
@@ -385,6 +442,8 @@ object ChatApi {
                 query = input.optString("query"),
                 layer = input.optString("layer").ifBlank { null },
                 topic = input.optString("topic").ifBlank { null },
+                limit = input.optInt("limit", 8).coerceIn(1, 100),
+                bump = input.optBoolean("bump", true),
             )
         }
         return result.fold(
@@ -396,7 +455,7 @@ object ChatApi {
         )
     }
 
-    private fun executeForget(context: Context, input: JSONObject, memoryStore: MemoryStore?): String {
+    private fun executeForget(input: JSONObject, memoryStore: MemoryStore?, turn: Turn): String {
         if (memoryStore == null) return "Kein Gedächtnis-Repo verbunden."
         val id = input.optString("id").ifBlank { null }
         val topic = input.optString("topic").ifBlank { null }
@@ -404,19 +463,11 @@ object ChatApi {
         return result.fold(
             onSuccess = { r ->
                 if (r.forgottenIds.isEmpty()) return "Nichts gefunden."
-                val synced = trySyncAfterWrite(context, memoryStore)
-                "Vergessen: ${r.forgottenIds.joinToString(", ")}." +
-                    if (synced) "" else " Nicht synchronisiert — bleibt vorerst nur auf diesem Gerät."
+                turn.geschrieben = true // der Sync läuft EINMAL am Ende der Runde
+                "Vergessen: ${r.forgottenIds.joinToString(", ")}."
             },
             onFailure = { e -> "Fehler beim Vergessen: ${e.message}" },
         )
-    }
-
-    /** Pusht sofort nach einem Schreibzugriff ("on the fly", wie gefordert). Netzwerkfehler brechen die Antwort nicht ab. */
-    private fun trySyncAfterWrite(context: Context, store: MemoryStore): Boolean {
-        // Nur-lokal-Modus ist eine bewusste Wahl — kein "nicht synchronisiert"-Hinweis nötig.
-        if (!MemorySettings.isConfigured(context)) return true
-        return syncAfterWrite(context, store)
     }
 
     private fun syncAfterWrite(context: Context, store: MemoryStore): Boolean = runCatching {
@@ -458,6 +509,11 @@ object ChatApi {
                 put("query", JSONObject().put("type", "string"))
                 put("layer", JSONObject().put("type", "string").put("enum", JSONArray(listOf("idt", "sem", "epi", "prc"))))
                 put("topic", JSONObject().put("type", "string"))
+                // Für Listen-Abfragen: hohes limit statt der 8er-Vorgabe, und
+                // bump=false, damit bloßes Vorlesen nicht als "Wiederlernen"
+                // zählt (das hielte gelöschte Einträge am Leben).
+                put("limit", JSONObject().put("type", "integer").put("description", "Höchstzahl Treffer (1–100, Vorgabe 8). Für vollständige Listen hoch wählen."))
+                put("bump", JSONObject().put("type", "boolean").put("description", "false = reiner Lesezugriff ohne Gedächtnis-Auffrischung (für Listen-Abfragen)."))
             },
             listOf("query"),
         )
@@ -543,6 +599,7 @@ object ChatApi {
         skills: List<Skill>,
         memoryStore: MemoryStore?,
         withTools: Boolean = true,
+        turn: Turn = Turn(),
     ): String {
         val messages = JSONArray()
         history.forEach { msg ->
@@ -622,7 +679,7 @@ object ChatApi {
                         if (block.optString("type") != "tool_use") continue
                         val toolName = block.optString("name")
                         val toolInput = block.optJSONObject("input") ?: JSONObject()
-                        val resultText = executeTool(context, toolName, toolInput, skills, memoryStore)
+                        val resultText = executeTool(context, toolName, toolInput, skills, memoryStore, turn)
                         toolResults.put(JSONObject().apply {
                             put("type", "tool_result")
                             put("tool_use_id", block.getString("id"))
@@ -718,6 +775,7 @@ object ChatApi {
         skills: List<Skill>,
         memoryStore: MemoryStore?,
         withTools: Boolean = true,
+        turn: Turn = Turn(),
     ): String {
         val messages = JSONArray()
         messages.put(JSONObject().apply {
@@ -781,7 +839,7 @@ object ChatApi {
                         val function = call.getJSONObject("function")
                         val toolName = function.optString("name")
                         val toolInput = runCatching { JSONObject(function.optString("arguments", "{}")) }.getOrDefault(JSONObject())
-                        val resultText = executeTool(context, toolName, toolInput, skills, memoryStore)
+                        val resultText = executeTool(context, toolName, toolInput, skills, memoryStore, turn)
                         messages.put(JSONObject().apply {
                             put("role", "tool")
                             put("tool_call_id", call.getString("id"))

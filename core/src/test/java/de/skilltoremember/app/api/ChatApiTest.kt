@@ -8,6 +8,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import de.skilltoremember.app.data.Skill
+import de.skilltoremember.app.data.memory.MemoryEngine
+import de.skilltoremember.app.data.memory.MemoryStore
+import java.nio.file.Files
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -123,5 +127,67 @@ class ChatApiTest {
     fun `Ohne Zitate kein Quellen-Block`() {
         val content = JSONArray().put(JSONObject().put("type", "text").put("text", "Hallo!"))
         assertEquals("Hallo!", ChatApi.extractAnthropicText(content))
+    }
+
+    // ---- recall-Tool: limit und bump kommen bei der Engine an ----
+
+    private fun storeMitListe(artikel: Int): MemoryStore {
+        val store = MemoryStore(Files.createTempDirectory("memory").toFile())
+        MemoryEngine.createFresh(store, gitUrl = null, branch = "main")
+        for (i in 1..artikel) {
+            MemoryEngine.remember(store, "sem", "list.einkauf.artikel$i", "Artikel $i", 0.6)
+        }
+        return store
+    }
+
+    @Test
+    fun `recall liefert ohne limit hoechstens acht Treffer`() {
+        val store = storeMitListe(12)
+        val text = ChatApi.executeRecall(JSONObject().put("query", "").put("topic", "list.einkauf"), store)
+        assertEquals(8, text.lines().size)
+    }
+
+    @Test
+    fun `recall liefert mit hohem limit die ganze Liste`() {
+        val store = storeMitListe(12)
+        val text = ChatApi.executeRecall(
+            JSONObject().put("query", "").put("topic", "list.einkauf").put("limit", 50),
+            store,
+        )
+        assertEquals(12, text.lines().size)
+    }
+
+    @Test
+    fun `recall mit bump false ist ein reiner Lesezugriff`() {
+        val store = storeMitListe(3)
+        val vorher = store.loadEntries().values.map { it.la to it.f }.toSet()
+        ChatApi.executeRecall(
+            JSONObject().put("query", "").put("topic", "list.einkauf").put("limit", 50).put("bump", false),
+            store,
+        )
+        val nachher = store.loadEntries().values.map { it.la to it.f }.toSet()
+        assertEquals(vorher, nachher)
+    }
+
+    // ---- Systemprompt: die Regel gegen das Schein-Speichern ----
+
+    @Test
+    fun `Prompt verbietet Speicherbestaetigungen ohne Werkzeug-Aufruf`() {
+        val prompt = ChatApi.buildSystemPrompt(emptyList(), memoryActive = true, digest = "Digest", concise = false)
+        assertTrue(prompt.contains("NIEMALS"))
+        assertTrue(prompt.contains("remember"))
+    }
+
+    @Test
+    fun `Skill-Block verlangt das Laden vor dem Merken`() {
+        val skill = Skill(id = "s1", name = "einkaufsliste", description = "Einkaufsliste", body = "...")
+        val prompt = ChatApi.buildSystemPrompt(listOf(skill), memoryActive = true, digest = null, concise = false)
+        assertTrue(prompt.contains("bevor du etwas merkst"))
+    }
+
+    @Test
+    fun `Knapp-Modus nimmt Werkzeuge von der Kuerze aus`() {
+        val prompt = ChatApi.buildSystemPrompt(emptyList(), memoryActive = false, digest = null, concise = true)
+        assertTrue(prompt.contains("NUR für den gesprochenen Text"))
     }
 }
