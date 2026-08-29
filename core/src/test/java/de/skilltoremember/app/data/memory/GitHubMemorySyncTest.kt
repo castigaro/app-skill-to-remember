@@ -7,6 +7,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -163,5 +164,23 @@ class GitHubMemorySyncTest {
         val last = requests.last()
         assertEquals("POST", last.method)
         assertTrue(last.path!!.endsWith("/git/refs"))
+    }
+
+    // Vorher schrieb jeder Sync einen Commit, auch wenn sich keine Datei
+    // geändert hatte — im Gedächtnis-Repo als "0 files changed" aufgetaucht.
+    @Test
+    fun `push committet nicht, wenn der Baum unveraendert bleibt`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"object":{"sha":"parent-1"}}"""))
+        repeat(9) { i -> server.enqueue(MockResponse().setResponseCode(201).setBody("""{"sha":"blob-$i"}""")) }
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"tree":{"sha":"tree-alt"}}"""))
+        server.enqueue(MockResponse().setResponseCode(201).setBody("""{"sha":"tree-alt"}""")) // dieselbe SHA
+
+        val pushed = GitHubMemorySync.push(store, config, "memory: ohne Aenderung")
+
+        assertFalse(pushed)
+        // GET ref + 9x Blob + GET commit + POST tree = 12; danach nichts mehr.
+        val pfade = (0 until 12).map { server.takeRequest().path!! }
+        assertTrue(pfade.none { it.endsWith("/git/commits") })
+        assertNull(server.takeRequest(200, java.util.concurrent.TimeUnit.MILLISECONDS))
     }
 }

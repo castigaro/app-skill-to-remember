@@ -37,6 +37,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Die Gesprächsliste: nur aus der App heraus erreichbar. -->
+        <activity
+            android:name=".ChatsActivity"
+            android:exported="false"
+            android:label="@string/wear_menu_chats" />
+
     </application>
 
 </manifest>

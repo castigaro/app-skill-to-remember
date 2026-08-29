@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import de.skilltoremember.app.data.Message
 import de.skilltoremember.app.data.Skill
 import de.skilltoremember.app.data.memory.MemoryEngine
 import de.skilltoremember.app.data.memory.MemoryStore
@@ -127,6 +128,24 @@ class ChatApiTest {
     fun `Ohne Zitate kein Quellen-Block`() {
         val content = JSONArray().put(JSONObject().put("type", "text").put("text", "Hallo!"))
         assertEquals("Hallo!", ChatApi.extractAnthropicText(content))
+    }
+
+    // ---- Verlaufsbegrenzung ----
+
+    @Test
+    fun `kurzer Verlauf geht unveraendert an die API`() {
+        val verlauf = (1..5).map { Message(Message.ROLE_USER, "Nachricht $it") }
+        assertEquals(verlauf, ChatApi.letzteNachrichten(verlauf))
+    }
+
+    @Test
+    fun `langer Verlauf wird auf die juengsten Nachrichten gekuerzt`() {
+        val verlauf = (1..50).map { Message(Message.ROLE_USER, "Nachricht $it") }
+        val gekuerzt = ChatApi.letzteNachrichten(verlauf)
+
+        assertEquals(ChatApi.MAX_VERLAUF_NACHRICHTEN, gekuerzt.size)
+        assertEquals("Nachricht 50", gekuerzt.last().text)
+        assertEquals("Nachricht 31", gekuerzt.first().text)
     }
 
     // ---- recall-Tool: limit und bump kommen bei der Engine an ----

@@ -15,4 +15,16 @@
     <string name="wear_memory_failed">Gedächtnis nicht geladen: %1$s</string>
     <string name="wear_location_denied">Ohne Standort-Berechtigung kann die KI hier keinen Ort ermitteln.</string>
     <string name="wear_sync_error">Gedächtnis-Abgleich fehlgeschlagen: %1$s</string>
+    <string name="wear_menu_new_chat">Neues Gespräch</string>
+    <string name="wear_menu_chats">Gespräche</string>
+    <string name="wear_menu_sync">Gedächtnis abgleichen</string>
+    <string name="wear_menu_quit">Beenden</string>
+    <string name="wear_chat_new_done">Neues Gespräch begonnen.</string>
+    <string name="wear_chats_empty">Noch keine Gespräche.
+Tippe aufs Mikrofon und leg los.</string>
+    <string name="wear_chat_delete_title">Gespräch löschen?</string>
+    <string name="wear_chat_delete_message">„%1$s“ wird nur auf der Uhr gelöscht. Das Gedächtnis bleibt unberührt.</string>
+    <string name="wear_memory_not_ready">Kein Gedächtnis verbunden — am Handy einrichten und an die Uhr senden.</string>
+    <string name="wear_sync_running">Gleiche ab …</string>
+    <string name="wear_sync_done">Gedächtnis abgeglichen.</string>
 </resources>

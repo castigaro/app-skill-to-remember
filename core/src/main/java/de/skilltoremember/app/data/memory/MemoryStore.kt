@@ -63,8 +63,15 @@ class MemoryStore(root: File) {
     fun readJson(file: File): JSONObject? =
         if (file.isFile) JSONObject(file.readText()) else null
 
+    /**
+     * `org.json` escapt Schrägstriche zu `\/` — gültiges JSON, aber die
+     * Browser-Fassung (JSON.stringify) tut es nicht. Dieselbe Datei flappte
+     * dadurch bei jedem Geräte-Wechsel hin und her und erzeugte Commits ohne
+     * inhaltliche Änderung (am `git`-Feld in meta.json gut zu sehen). Die
+     * .jsonl-Dateien waren nie betroffen — die schreibt CanonicalJson.
+     */
     fun writeJson(file: File, obj: JSONObject) {
-        writeAtomic(file, obj.toString(2) + "\n")
+        writeAtomic(file, obj.toString(2).replace("\\/", "/") + "\n")
     }
 
     fun readJsonl(file: File): List<JSONObject> {
