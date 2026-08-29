@@ -96,9 +96,17 @@ class MainActivity :
             }
         }
 
-        // Wisch von unten öffnet das Menü — der Sprech-Screen selbst bleibt
-        // frei von Knöpfen, dafür ist er zu klein.
         binding.actionDrawer.setOnMenuItemClickListener(this)
+        // Der Wisch von unten gehört auf Wear OS 3 dem System (Schnell-
+        // einstellungen) — auf der Galaxy Watch nachgemessen: Der Drawer
+        // bekommt die Geste nie zu sehen. Deshalb zwei eigene Wege:
+        // ein antippbarer Peek-Balken am unteren Rand und ein langer Druck
+        // aufs Mikrofon.
+        binding.actionDrawer.controller.peekDrawer()
+        binding.micButton.setOnLongClickListener {
+            binding.actionDrawer.controller.openDrawer()
+            true
+        }
 
         tts = TextToSpeech(this) { status ->
             runOnUiThread {
@@ -128,8 +136,7 @@ class MainActivity :
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
-        // Das Menü schließt sich nach der Auswahl von selbst; ein
-        // closeDrawer() gibt die Bibliothek nach außen nicht her.
+        binding.actionDrawer.controller.closeDrawer()
         when (item.itemId) {
             R.id.action_new_chat -> neuerChat()
             R.id.action_chats -> startActivity(ChatsActivity.starten(this))
@@ -217,6 +224,10 @@ class MainActivity :
     override fun onResume() {
         super.onResume()
         Wearable.getDataClient(this).addListener(this)
+        // Nach der Rückkehr aus der Gesprächsliste soll der Hinweis auf das
+        // Menü wieder da sein — und der gewechselte Chat gilt ab sofort.
+        binding.actionDrawer.controller.peekDrawer()
+        updateStatus()
     }
 
     override fun onPause() {
