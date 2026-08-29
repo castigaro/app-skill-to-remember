@@ -61,6 +61,16 @@ object ChatApi {
     private const val MAX_TOOL_ROUNDS = 6
     private const val MEMORY_PULL_INTERVAL_SECONDS = 5 * 60L
 
+    /**
+     * So viele Nachrichten gehen höchstens an die API.
+     *
+     * Der Uhr-Chat lief bisher endlos weiter und schickte bei jeder Antwort
+     * den kompletten Verlauf mit — die Kosten wuchsen mit jedem Satz. Der
+     * gespeicherte Verlauf bleibt vollständig; gekürzt wird nur, was
+     * unterwegs ist. Was wirklich wichtig war, steht ohnehin im Gedächtnis.
+     */
+    internal const val MAX_VERLAUF_NACHRICHTEN = 20
+
     // Basis-Variante des serverseitigen Suche-Tools: läuft auf allen aktuellen
     // Claude-Modellen (auch Haiku) — die neueren Varianten nicht.
     private const val WEB_SEARCH_TOOL_TYPE = "web_search_20250305"
@@ -104,11 +114,13 @@ object ChatApi {
         val systemPrompt = buildSystemPrompt(skills, memoryStore != null, digest, concise)
         val turn = Turn()
 
+        val verlauf = letzteNachrichten(chat.messages)
+
         try {
             if (config.provider == ProviderSettings.PROVIDER_OPENAI) {
-                requestOpenAi(context, config.apiKey, config.model, systemPrompt, chat.messages, skills, memoryStore, turn = turn)
+                requestOpenAi(context, config.apiKey, config.model, systemPrompt, verlauf, skills, memoryStore, turn = turn)
             } else {
-                requestAnthropic(context, config.apiKey, config.model, systemPrompt, chat.messages, skills, memoryStore, turn = turn)
+                requestAnthropic(context, config.apiKey, config.model, systemPrompt, verlauf, skills, memoryStore, turn = turn)
             }
         } finally {
             // EIN Sync je Antwort statt einer je Schreib-Tool: "Milch, Butter,
@@ -213,6 +225,16 @@ object ChatApi {
         return withoutFirstLine.substringBeforeLast("```").trim()
     }
 
+    /**
+     * Der Ausschnitt des Verlaufs, der an die API geht — die jüngsten
+     * [MAX_VERLAUF_NACHRICHTEN]. Ein angeschnittener Werkzeug-Austausch ist
+     * dabei kein Problem: Die App schickt Werkzeug-Ergebnisse innerhalb
+     * einer Runde mit, im gespeicherten Verlauf steht nur Text.
+     */
+    internal fun letzteNachrichten(alle: List<Message>): List<Message> =
+        if (alle.size <= MAX_VERLAUF_NACHRICHTEN) alle
+        else alle.subList(alle.size - MAX_VERLAUF_NACHRICHTEN, alle.size)
+
     /** Abgleich fällig, wenn der letzte Sync fehlt, unlesbar oder älter als das Intervall ist. */
     internal fun isMemoryPullDue(lastSyncIso: String?, now: Instant): Boolean {
         val last = lastSyncIso?.let { runCatching { MemoryClock.parseIso(it) }.getOrNull() } ?: return true
@@ -268,6 +290,11 @@ object ChatApi {
                     erfolgreich war. Eine Bestätigung ohne Werkzeug-Aufruf ist eine falsche
                     Auskunft. Antworten aus dem Gesprächsverlauf ersetzen keinen Abruf per
                     $TOOL_RECALL.
+
+                    Ein leeres Abrufergebnis ist KEIN Beweis, dass nichts gespeichert
+                    ist: Suche bei Listen und Sammlungen zusätzlich über den
+                    topic-Pfad (z. B. topic "list.einkauf") mit hohem limit,
+                    bevor du verneinst.
                 """.trimIndent(),
             )
         }

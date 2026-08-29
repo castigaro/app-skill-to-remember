@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,7 +47,10 @@ import java.util.Locale
  * eingetippt. Antworten laufen immer im Knapp-Modus (concise), damit die
  * Sprachausgabe kurz bleibt.
  */
-class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
+class MainActivity :
+    ComponentActivity(),
+    DataClient.OnDataChangedListener,
+    MenuItem.OnMenuItemClickListener {
 
     private lateinit var binding: ActivityWearBinding
 
@@ -92,6 +96,10 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
             }
         }
 
+        // Wisch von unten öffnet das Menü — der Sprech-Screen selbst bleibt
+        // frei von Knöpfen, dafür ist er zu klein.
+        binding.actionDrawer.setOnMenuItemClickListener(this)
+
         tts = TextToSpeech(this) { status ->
             runOnUiThread {
                 if (status == TextToSpeech.SUCCESS) {
@@ -117,6 +125,80 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
             autoListen = true
             startListening()
         }
+    }
+
+    override fun onMenuItemClick(item: MenuItem): Boolean {
+        // Das Menü schließt sich nach der Auswahl von selbst; ein
+        // closeDrawer() gibt die Bibliothek nach außen nicht her.
+        when (item.itemId) {
+            R.id.action_new_chat -> neuerChat()
+            R.id.action_chats -> startActivity(ChatsActivity.starten(this))
+            R.id.action_sync -> gedaechtnisJetztAbgleichen()
+            R.id.action_quit -> beenden()
+            else -> return false
+        }
+        return true
+    }
+
+    /** Ein frisches Gespräch: Der alte Verlauf bleibt erhalten, ist nur nicht mehr aktiv. */
+    private fun neuerChat() {
+        ChatsActivity.setzeAktivenChat(this, null)
+        binding.replyText.text = ""
+        Toast.makeText(this, R.string.wear_chat_new_done, Toast.LENGTH_SHORT).show()
+        updateStatus()
+    }
+
+    /**
+     * Gedächtnis von Hand abgleichen — der Weg an der Fünf-Minuten-Drossel
+     * vorbei, wenn man am Handy gerade etwas eingetragen hat und es sofort
+     * auf der Uhr braucht.
+     */
+    private fun gedaechtnisJetztAbgleichen() {
+        if (!MemorySettings.isConfigured(this) || !MemorySettings.store(this).exists()) {
+            Toast.makeText(this, R.string.wear_memory_not_ready, Toast.LENGTH_LONG).show()
+            return
+        }
+        Toast.makeText(this, R.string.wear_sync_running, Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            val ergebnis = withContext(Dispatchers.IO) {
+                runCatching {
+                    val store = MemorySettings.store(this@MainActivity)
+                    val config = MemorySettings.config(this@MainActivity)
+                    GitHubMemorySync.sync(store, config, "memory: ${MemoryClock.isoNow()}")
+                    // Der Pull schreibt index.json nicht — ohne Reindex bliebe
+                    // der Digest der nächsten Antwort auf dem alten Stand.
+                    MemoryEngine.reindex(store, store.loadEntries(), store.meta(), MemoryClock.now())
+                    MemorySettings.setLastSync(this@MainActivity, MemoryClock.isoNow())
+                }
+            }
+            if (beendetOderWeg()) return@launch
+            ergebnis.fold(
+                onSuccess = {
+                    Toast.makeText(this@MainActivity, R.string.wear_sync_done, Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { e ->
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.wear_sync_error, e.message ?: "?"),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
+            )
+        }
+    }
+
+    private fun beendetOderWeg(): Boolean = isFinishing || isDestroyed
+
+    /**
+     * Beenden: Sprachausgabe stoppen und die App schließen. Es wird nichts
+     * gelöscht — Gedächtnis, Zugangsdaten und Gespräche bleiben, und ein
+     * laufender Hintergrund-Abgleich läuft in seinem eigenen Geltungsbereich
+     * zu Ende.
+     */
+    private fun beenden() {
+        autoListen = false
+        tts?.stop()
+        finishAffinity()
     }
 
     /** Installieren geht auf der Uhr nur per adb — hier gibt es deshalb nur den Hinweis. */
@@ -275,11 +357,10 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
 
     /** Ein fortlaufender Uhr-Chat — landet ganz normal im gemeinsamen ChatStore. */
     private fun ensureChat(): Chat {
-        val prefs = getSharedPreferences("wear", Context.MODE_PRIVATE)
-        prefs.getString("chatId", null)?.let { ChatStore.get(this, it) }?.let { return it }
+        ChatsActivity.aktiverChat(this)?.let { ChatStore.get(this, it) }?.let { return it }
         val chat = Chat(title = getString(R.string.wear_chat_title))
         ChatStore.add(this, chat)
-        prefs.edit().putString("chatId", chat.id).apply()
+        ChatsActivity.setzeAktivenChat(this, chat.id)
         return chat
     }
 
@@ -290,6 +371,9 @@ class MainActivity : ComponentActivity(), DataClient.OnDataChangedListener {
         lifecycleScope.launch {
             try {
                 val chat = withContext(Dispatchers.IO) { ensureChat() }
+                // Die erste Äußerung gibt den Titel — sonst hieße in der
+                // Chatliste jedes Gespräch „Am Handgelenk".
+                if (chat.messages.isEmpty()) chat.title = text.take(40)
                 chat.messages.add(Message(Message.ROLE_USER, text))
                 val reply = ChatApi.reply(applicationContext, chat, concise = true)
                 chat.messages.add(Message(Message.ROLE_ASSISTANT, reply))

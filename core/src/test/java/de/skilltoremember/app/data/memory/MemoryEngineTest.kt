@@ -116,6 +116,38 @@ class MemoryEngineTest {
         assertEquals("sem_d375bd2223", result.hits.first().id)
     }
 
+    // Der Fall, der die Einkaufsliste tagelang "leer" wirken ließ: Gefragt wird
+    // nach der "Einkaufsliste", gespeichert ist `list.einkauf.<artikel>` — und
+    // das deutsche Kompositum ist LÄNGER als das gespeicherte Wort.
+    @Test
+    fun `recall findet Eintraege auch ueber ein zusammengesetztes Suchwort`() {
+        MemoryEngine.remember(store, "sem", "list.einkauf.eier", "Eier", salience = 0.6)
+        MemoryEngine.remember(store, "sem", "list.einkauf.joghurt", "Joghurt", salience = 0.6)
+        MemoryEngine.remember(store, "sem", "pref.shell", "PowerShell 5.1 direkt, nie pwsh", salience = 0.9)
+
+        val treffer = MemoryEngine.recall(store, query = "Einkaufsliste")
+
+        assertEquals(
+            listOf("list.einkauf.eier", "list.einkauf.joghurt"),
+            treffer.hits.map { it.t }.sorted(),
+        )
+    }
+
+    @Test
+    fun `recall findet weiterhin ueber das kuerzere Wort`() {
+        MemoryEngine.remember(store, "sem", "list.einkauf.eier", "Eier", salience = 0.6)
+
+        assertEquals(1, MemoryEngine.recall(store, query = "einkauf").hits.size)
+    }
+
+    @Test
+    fun `recall laesst kurze Woerter keine Zufallstreffer erzeugen`() {
+        MemoryEngine.remember(store, "sem", "pref.editor", "Uses VS Code", salience = 0.6)
+
+        // "das" darf nicht über die Rückwärts-Richtung auf "da…" matchen.
+        assertEquals(0, MemoryEngine.recall(store, query = "das").hits.size)
+    }
+
     @Test
     fun `forget archiviert mit Tombstone und ein Sync von einer anderen Maschine haelt es nicht zurueck`() {
         MemoryEngine.remember(store, "sem", "pref.editor", "Uses VS Code", salience = 0.6)

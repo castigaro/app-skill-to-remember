@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_new_chat"
+        android:icon="@drawable/ic_plus"
+        android:title="@string/wear_menu_new_chat" />
+    <item
+        android:id="@+id/action_chats"
+        android:icon="@drawable/ic_list"
+        android:title="@string/wear_menu_chats" />
+    <item
+        android:id="@+id/action_sync"
+        android:icon="@drawable/ic_sync"
+        android:title="@string/wear_menu_sync" />
+    <item
+        android:id="@+id/action_quit"
+        android:icon="@drawable/ic_close"
+        android:title="@string/wear_menu_quit" />
+</menu>

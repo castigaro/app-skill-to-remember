@@ -41,6 +41,9 @@ object MemoryEngine {
 
     const val SALIENCE_THRESHOLD = 0.35
     const val PRUNE_STRENGTH = 0.15
+
+    /** Ab dieser Länge zählt ein Wort auch als Bestandteil eines längeren (siehe `teilwort`). */
+    const val TEILWORT_MINDESTLAENGE = 4
     const val PROMOTE_AFTER = 3
     const val DEFAULT_BUDGET_TOKENS = 1200
     const val CHARS_PER_TOKEN = 4
@@ -87,6 +90,26 @@ object MemoryEngine {
     private fun wordSet(vararg parts: String?): Set<String> {
         val blob = parts.filterNotNull().joinToString(" ")
         return blob.lowercase().split(WORD_SPLIT).filter { it.length > 1 }.toSet()
+    }
+
+    /**
+     * Teiltreffer zwischen einem gespeicherten Wort und einem Suchwort — in
+     * BEIDE Richtungen.
+     *
+     * Vorher zählte nur „gespeichertes Wort enthält das Suchwort": Die Frage
+     * nach der „Einkaufsliste" fand `list.einkauf.eier` deshalb nie
+     * (`"einkauf".contains("einkaufsliste")` ist falsch), und das Modell
+     * antwortete wahrheitsgemäß „nichts gefunden". Deutsche Komposita sind
+     * aber genau der Normalfall, in dem gefragt wird.
+     *
+     * Die Mindestlänge hält Zufallstreffer draußen: Ohne sie fände „das"
+     * jedes Wort mit „da" darin.
+     */
+    private fun teilwort(gespeichert: String, gesucht: String): Boolean {
+        if (gespeichert.contains(gesucht)) return true
+        return gesucht.length >= TEILWORT_MINDESTLAENGE
+            && gespeichert.length >= TEILWORT_MINDESTLAENGE
+            && gesucht.contains(gespeichert)
     }
 
     /** strength = salience * 0.5^(age_days/half_life) * (1 + 0.15 * ln(1 + recalls)) */
@@ -240,7 +263,7 @@ object MemoryEngine {
             var match: Double
             if (wanted.isNotEmpty()) {
                 val hits = (wanted intersect haystack).size
-                val partial = wanted.count { w -> haystack.any { it.contains(w) } }
+                val partial = wanted.count { w -> haystack.any { teilwort(it, w) } }
                 match = (hits + 0.5 * (partial - hits)) / wanted.size
                 if (match <= 0) continue
             } else {

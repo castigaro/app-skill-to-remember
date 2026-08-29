@@ -1,51 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.wear.widget.BoxInsetLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Der Sprech-Screen bleibt unverändert; er steckt jetzt in einem
+     WearableDrawerLayout, damit ein Wisch von unten das Menü öffnet. Das ist
+     der Wear-Standardgriff und kostet auf dem Screen selbst keinen Platz. -->
+<androidx.wear.widget.drawer.WearableDrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <LinearLayout
+    <androidx.wear.widget.BoxInsetLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        app:boxedEdges="all">
+        android:layout_height="match_parent">
 
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textColor="#B0BEC5"
-            android:textSize="12sp" />
-
-        <ScrollView
-            android:id="@+id/replyScroll"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginVertical="4dp"
-            android:layout_weight="1">
+            android:layout_height="match_parent"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            app:boxedEdges="all">
 
             <TextView
-                android:id="@+id/replyText"
-                android:layout_width="match_parent"
+                android:id="@+id/statusText"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:textColor="@android:color/white"
-                android:textSize="14sp" />
+                android:textColor="#B0BEC5"
+                android:textSize="12sp" />
 
-        </ScrollView>
+            <ScrollView
+                android:id="@+id/replyScroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginVertical="4dp"
+                android:layout_weight="1">
 
-        <ImageButton
-            android:id="@+id/micButton"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:layout_marginBottom="4dp"
-            android:background="@drawable/bg_mic"
-            android:contentDescription="@string/wear_speak"
-            android:src="@drawable/ic_mic" />
+                <TextView
+                    android:id="@+id/replyText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp" />
 
-    </LinearLayout>
+            </ScrollView>
 
-</androidx.wear.widget.BoxInsetLayout>
+            <ImageButton
+                android:id="@+id/micButton"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/bg_mic"
+                android:contentDescription="@string/wear_speak"
+                android:src="@drawable/ic_mic" />
+
+        </LinearLayout>
+
+    </androidx.wear.widget.BoxInsetLayout>
+
+    <androidx.wear.widget.drawer.WearableActionDrawerView
+        android:id="@+id/actionDrawer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="bottom"
+        app:actionMenu="@menu/wear_actions" />
+
+</androidx.wear.widget.drawer.WearableDrawerLayout>

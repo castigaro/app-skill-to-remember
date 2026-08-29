@@ -232,9 +232,12 @@ object GitHubMemorySync {
 
     /**
      * Push als ein atomarer Commit. Gibt `true` zurück, wenn wirklich etwas
-     * gepusht wurde (leerer Baum ist erlaubt — GitHub akzeptiert Commits
-     * ohne Änderungen zum Elternbaum nicht sinnvoll, daher wird hier immer
-     * committet; Aufrufer entscheidet, ob ein Push nötig ist).
+     * gepusht wurde.
+     *
+     * Ist der neue Baum identisch mit dem des Elterncommits, entsteht KEIN
+     * Commit: Vorher schrieb jeder Sync einen Eintrag in die Historie, auch
+     * wenn sich keine einzige Datei geändert hatte (im Repo als Commit mit
+     * "0 files changed" sichtbar).
      */
     fun push(store: MemoryStore, config: GitHubMemoryConfig, message: String, retries: Int = 4): Boolean {
         var attempt = 0
@@ -251,12 +254,18 @@ object GitHubMemorySync {
                 )
             }
             val treeBody = JSONObject().put("tree", treeEntries)
-            if (parentSha != null) treeBody.put("base_tree", getTreeSha(config, parentSha))
+            val parentTreeSha = if (parentSha != null) getTreeSha(config, parentSha) else null
+            if (parentTreeSha != null) treeBody.put("base_tree", parentTreeSha)
             val (treeCode, treeResp) = call(
                 request(config, "/git/trees").post(treeBody.toString().toRequestBody(JSON)),
             )
             if (treeCode !in 200..299) throw GitHubSyncException(errorMessage(treeCode, treeResp))
             val newTreeSha = JSONObject(treeResp).getString("sha")
+
+            // Nichts geändert: GitHub liefert bei gleichem Inhalt dieselbe
+            // Tree-Kennung zurück. Ein Commit darauf wäre ein leerer Eintrag
+            // in der Historie.
+            if (newTreeSha == parentTreeSha) return false
 
             val commitBody = JSONObject().put("message", message).put("tree", newTreeSha)
             commitBody.put("parents", if (parentSha != null) JSONArray().put(parentSha) else JSONArray())
