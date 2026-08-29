@@ -14,7 +14,7 @@ android {
         // Kommt in der CI aus der Laufnummer (jeder main-Build ist eine neuere
         // Version, ohne manuelles Hochzählen); lokal gebaut bleibt es 1.
         versionCode = (project.findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
-        versionName = "0.12.0"
+        versionName = "0.12.1"
     }
 
     // Keystore und Passwort kommen aus GitHub-Secrets (siehe build.yml).
