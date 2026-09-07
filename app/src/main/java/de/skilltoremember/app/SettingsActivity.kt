@@ -199,6 +199,11 @@ class SettingsActivity : AppCompatActivity() {
                 )
             }
         }
+        // Die Websuche ist ein Anthropic-Servertool; mit OpenAI als aktivem
+        // Anbieter griffe der Schalter ins Leere. Der gespeicherte Wert bleibt.
+        val websucheMoeglich = ProviderSettings.activeConfig(this)?.provider != ProviderSettings.PROVIDER_OPENAI
+        binding.switchWebSearch.isEnabled = websucheMoeglich
+        binding.webSearchLocked.visibility = if (websucheMoeglich) View.GONE else View.VISIBLE
         refreshRegisterLinks()
         refreshCosts()
     }

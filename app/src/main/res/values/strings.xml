@@ -117,6 +117,7 @@
     <string name="web_search_confirm_title">Websuche aktivieren?</string>
     <string name="web_search_confirm_message">Jede Websuche kostet zusätzlich zu den normalen Token-Kosten etwa 0,01 $ (10 $ pro 1.000 Suchen). Eine Antwort kann bis zu 5 Suchen auslösen, und die gefundenen Inhalte zählen als Eingabe-Token. Die Kosten fließen mit in den Kostenzähler ein.\n\nFür die Uhr gilt die Einstellung nach dem nächsten „Einstellungen an die Uhr senden“.</string>
     <string name="web_search_confirm_on">Aktivieren</string>
+    <string name="web_search_locked">Mit einem OpenAI-Schlüssel nicht verfügbar – die Websuche läuft auf Anthropics Servern, OpenAIs API bietet dafür nichts Vergleichbares.</string>
 
     <!-- Einstellungen: Standort -->
     <string name="title_location">Standort</string>
