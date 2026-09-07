@@ -29,6 +29,13 @@ object VoiceSettings {
         prefs(context).edit().putBoolean("autoListen", enabled).apply()
     }
 
+    /** Ob der einmalige Hinweis zur Spracherkennung schon bestätigt wurde. */
+    fun isSpeechHintShown(context: Context): Boolean = prefs(context).getBoolean("speechHintShown", false)
+
+    fun setSpeechHintShown(context: Context) {
+        prefs(context).edit().putBoolean("speechHintShown", true).apply()
+    }
+
     fun setVoiceName(context: Context, name: String) {
         prefs(context).edit().putString("voiceName", name).apply()
     }

@@ -149,11 +149,19 @@ class ChatActivity : AppCompatActivity() {
         }
         if (state.error != null && state.error != shownError) {
             shownError = state.error
-            Snackbar.make(
-                binding.root,
-                getString(R.string.chat_error, state.error),
-                Snackbar.LENGTH_INDEFINITE,
-            ).setAction(R.string.retry) { viewModel.retry(chat) }.show()
+            // Ohne Antwort wird nichts vorgelesen und damit nie wieder zugehört:
+            // Der Dialogmodus endet ausdrücklich, statt still zu hängen.
+            val dialogBeendet = state.dialogMode
+            if (dialogBeendet) {
+                viewModel.setDialogMode(false)
+                invalidateOptionsMenu()
+                tts?.stop()
+            }
+            val meldung = getString(R.string.chat_error, state.error) +
+                if (dialogBeendet) " " + getString(R.string.dialog_mode_off) else ""
+            Snackbar.make(binding.root, meldung, Snackbar.LENGTH_INDEFINITE)
+                .setAction(R.string.retry) { viewModel.retry(chat) }
+                .show()
         }
         if (state.error == null) shownError = null
     }
@@ -182,6 +190,23 @@ class ChatActivity : AppCompatActivity() {
             endDialogMode()
             return
         }
+        // Wie bei Websuche und Standort: einmal sagen, dass Audio das Gerät verlassen kann.
+        if (!VoiceSettings.isSpeechHintShown(this)) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.speech_hint_title)
+                .setMessage(R.string.speech_hint_message)
+                .setPositiveButton(R.string.speech_hint_ok) { _, _ ->
+                    VoiceSettings.setSpeechHintShown(this)
+                    startDialogMode()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+            return
+        }
+        startDialogMode()
+    }
+
+    private fun startDialogMode() {
         viewModel.setDialogMode(true)
         invalidateOptionsMenu()
         ensureTts {
