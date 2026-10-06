@@ -75,6 +75,7 @@ jobs:
             skilltoremember-debug.apk
             skilltoremember-wear.apk
             skilltoremember-version.json
+          retention-days: 3
 
       - name: Publish release
         # Nur vom main-Branch veröffentlichen — ein manueller Lauf auf einem
