@@ -79,7 +79,7 @@ Standard-Gradle-Projekt (Kotlin, AGP 8.5, compileSdk 34) mit drei Modulen:
 Speicher, Gedächtnis-Engine).
 
 ```
-git clone https://github.com/AppSonar/app-skill-to-remember
+git clone https://github.com/castigaro/app-skill-to-remember
 cd app-skill-to-remember
 ./gradlew assembleDebug
 ```
