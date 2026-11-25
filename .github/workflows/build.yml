@@ -62,7 +62,7 @@ jobs:
           {
             "versionCode": $VERSION_CODE,
             "versionName": "$VERSION_NAME",
-            "apkUrl": "https://github.com/AppSonar/app-skill-to-remember/releases/download/latest/skilltoremember.apk"
+            "apkUrl": "https://github.com/castigaro/app-skill-to-remember/releases/download/latest/skilltoremember.apk"
           }
           EOF
 
